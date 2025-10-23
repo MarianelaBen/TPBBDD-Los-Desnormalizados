@@ -331,3 +331,31 @@ ON LOS_DESNORMALIZADOS.encuesta_alumno (encuesta_id);
 -- FIN DE ÍNDICES
 ------------------------------------------------------
 
+------------------------------------------------------
+-- CREACIÓN DE TRIGGERS
+------------------------------------------------------
+GO
+CREATE TRIGGER LOS_DESNORMALIZADOS.trg_actualizar_importe_factura
+ON LOS_DESNORMALIZADOS.detalle_factura
+AFTER INSERT, UPDATE, DELETE
+AS
+BEGIN
+    DECLARE @facturas_afectadas TABLE (factura_id BIGINT);
+
+    INSERT INTO @facturas_afectadas (factura_id)
+    SELECT DISTINCT factura_id FROM inserted WHERE factura_id IS NOT NULL
+    UNION
+    SELECT DISTINCT factura_id FROM deleted WHERE factura_id IS NOT NULL;
+
+    UPDATE f
+    SET f.importe_total = (
+        SELECT SUM(df.importe)
+        FROM LOS_DESNORMALIZADOS.detalle_factura df
+        WHERE df.factura_id = f.nro_factura
+    )
+    FROM LOS_DESNORMALIZADOS.factura f
+    INNER JOIN @facturas_afectadas fa ON f.nro_factura = fa.factura_id;
+END;
+GO
+
+
