@@ -48,7 +48,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.categoria(
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.curso(
-    codigo_curso BIGINT PRIMARY KEY,
+    codigo_curso BIGINT PRIMARY KEY IDENTITY(1,1),
     sede_id BIGINT,
     profesor_id BIGINT,
     nombre VARCHAR(255),
@@ -78,7 +78,8 @@ CREATE TABLE LOS_DESNORMALIZADOS.horario_curso(
     id BIGINT PRIMARY KEY IDENTITY(1,1),
     curso_id BIGINT,
     turno_id SMALLINT,
-    FOREIGN KEY(curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso)
+    FOREIGN KEY(curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso),
+    FOREIGN KEY(turno_id) REFERENCES LOS_DESNORMALIZADOS.turno(id)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.horario_curso_dia(
@@ -107,7 +108,8 @@ CREATE TABLE LOS_DESNORMALIZADOS.final_inscripto (
 	final_id BIGINT NOT NULL,
 	fecha_inscripcion DATETIME DEFAULT GETDATE(),
 	FOREIGN KEY (alumno_id) REFERENCES LOS_DESNORMALIZADOS.alumno(legajo),
-	FOREIGN KEY (profesor_id) REFERENCES LOS_DESNORMALIZADOS.profesor(id)
+	FOREIGN KEY (profesor_id) REFERENCES LOS_DESNORMALIZADOS.profesor(id),
+    FOREIGN KEY (final_id) REFERENCES LOS_DESNORMALIZADOS.final(id)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.detalle_factura (
@@ -116,7 +118,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.detalle_factura (
 	importe DECIMAL(18,2),
 	mes BIGINT CHECK (mes BETWEEN 1 AND 12),
 	anio BIGINT,
-	FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso),
+	FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.factura (
@@ -146,7 +148,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.pago (
 	importe DECIMAL(18 ,2),
 	medio_pago_id BIGINT,
 	FOREIGN KEY (factura_id) REFERENCES LOS_DESNORMALIZADOS.factura(nro_factura),
-	FOREIGN KEY (medio_pago_id) REFERENCES LOS_DESNORMALIZADOS.medio_de_pago(id),
+	FOREIGN KEY (medio_pago_id) REFERENCES LOS_DESNORMALIZADOS.medio_de_pago(id)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.encuesta (
@@ -187,7 +189,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.respuesta_encuesta (
 
 CREATE TABLE LOS_DESNORMALIZADOS.estado_inscripcion(
     id SMALLINT PRIMARY KEY IDENTITY(1,1),
-    nombre VARCHAR(255) CHECK(nombre IN ('Aprobada', 'Rechazada', 'Pendiente')),
+    nombre VARCHAR(255) CHECK(nombre IN ('Aprobada', 'Rechazada', 'Pendiente'))
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.inscripcion_curso(
@@ -199,7 +201,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.inscripcion_curso(
     fecha_respuesta DATETIME DEFAULT GETDATE(),
     FOREIGN KEY(alumno_id) REFERENCES LOS_DESNORMALIZADOS.alumno(legajo),
     FOREIGN KEY(curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso),
-    FOREIGN KEY(estado_id) REFERENCES LOS_DESNORMALIZADOS.estado_inscripcion(id),
+    FOREIGN KEY(estado_id) REFERENCES LOS_DESNORMALIZADOS.estado_inscripcion(id)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.modulo(
@@ -208,14 +210,14 @@ CREATE TABLE LOS_DESNORMALIZADOS.modulo(
     descripcion VARCHAR(255),
     curso_id BIGINT,
     FOREIGN KEY(curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso)
-)
+);
 
 CREATE TABLE LOS_DESNORMALIZADOS.evaluacion(
     id BIGINT PRIMARY KEY IDENTITY(1,1),
     fecha_evaluacion DATETIME DEFAULT GETDATE(),
     modulo_id BIGINT,
     FOREIGN KEY(modulo_id) REFERENCES LOS_DESNORMALIZADOS.modulo(id)
-)
+);
 
 CREATE TABLE LOS_DESNORMALIZADOS.alumno_evaluado(
     legajo_alumno BIGINT,
@@ -235,6 +237,6 @@ CREATE TABLE LOS_DESNORMALIZADOS.trabajo_practico(
     fecha_evaluacion DATETIME DEFAULT GETDATE(),
     nota BIGINT CHECK (nota BETWEEN 0 AND 10),
     FOREIGN KEY(curso_id)  REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso),
-    FOREIGN KEY(alumno_id) REFERENCES LOS_DESNORMALIZADOS.alumno(legajo),
+    FOREIGN KEY(alumno_id) REFERENCES LOS_DESNORMALIZADOS.alumno(legajo)
 );
 
