@@ -1,3 +1,6 @@
+------------------------------------------------------
+-- CREAMOS TABLAS
+------------------------------------------------------
 CREATE TABLE LOS_DESNORMALIZADOS.profesor (
 	id BIGINT PRIMARY KEY IDENTITY(1,1),
 	nombre VARCHAR(255) NOT NULL,
@@ -239,4 +242,90 @@ CREATE TABLE LOS_DESNORMALIZADOS.trabajo_practico(
     FOREIGN KEY(curso_id)  REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso),
     FOREIGN KEY(alumno_id) REFERENCES LOS_DESNORMALIZADOS.alumno(legajo)
 );
+------------------------------------------------------
+-- FIN DE CREACION DE TABLAS
+------------------------------------------------------
 
+------------------------------------------------------
+-- ÍNDICES ÚNICOS (para evitar duplicados)
+------------------------------------------------------
+CREATE UNIQUE INDEX idx_alumno_legajo
+ON LOS_DESNORMALIZADOS.alumno (legajo);
+
+CREATE UNIQUE INDEX idx_profesor_dni
+ON LOS_DESNORMALIZADOS.profesor (dni);
+
+------------------------------------------------------
+-- ÍNDICES DE CLAVES FORÁNEAS
+------------------------------------------------------
+-- curso
+CREATE INDEX idx_curso_profesor
+ON LOS_DESNORMALIZADOS.curso (profesor_id);
+
+CREATE INDEX idx_curso_categoria
+ON LOS_DESNORMALIZADOS.curso (categoria_id);
+
+CREATE INDEX idx_curso_sede
+ON LOS_DESNORMALIZADOS.curso (sede_id);
+
+-- horario_curso
+CREATE INDEX idx_horario_curso_curso
+ON LOS_DESNORMALIZADOS.horario_curso (curso_id);
+
+CREATE INDEX idx_horario_curso_turno
+ON LOS_DESNORMALIZADOS.horario_curso (turno_id);
+
+-- inscripcion_curso
+CREATE INDEX idx_inscripcion_curso_alumno
+ON LOS_DESNORMALIZADOS.inscripcion_curso (alumno_id);
+
+CREATE INDEX idx_inscripcion_curso_curso
+ON LOS_DESNORMALIZADOS.inscripcion_curso (curso_id);
+
+CREATE INDEX idx_inscripcion_curso_estado
+ON LOS_DESNORMALIZADOS.inscripcion_curso (estado_id);
+
+-- trabajo_practico
+CREATE INDEX idx_trabajo_practico
+ON LOS_DESNORMALIZADOS.trabajo_practico (id);
+
+-- final_inscripto
+CREATE INDEX idx_final_inscripto_alumno
+ON LOS_DESNORMALIZADOS.final_inscripto (alumno_id);
+
+CREATE INDEX idx_final_inscripto_final
+ON LOS_DESNORMALIZADOS.final_inscripto (final_id);
+
+-- detalle_factura
+CREATE INDEX idx_detalle_factura_curso
+ON LOS_DESNORMALIZADOS.detalle_factura (curso_id);
+
+-- factura
+CREATE INDEX idx_factura_alumno
+ON LOS_DESNORMALIZADOS.factura (alumno_id);
+
+------------------------------------------------------
+-- ÍNDICES DE APOYO (búsquedas y filtros frecuentes)
+------------------------------------------------------
+-- facturas por fecha
+CREATE INDEX idx_factura_fecha_emision
+ON LOS_DESNORMALIZADOS.factura (fecha_emision);
+
+-- detalle_factura por año/mes
+CREATE INDEX idx_detalle_factura_anio_mes
+ON LOS_DESNORMALIZADOS.detalle_factura (anio, mes);
+
+-- pago
+CREATE INDEX idx_pago_factura
+ON LOS_DESNORMALIZADOS.pago (factura_id);
+
+-- encuesta_alumno
+CREATE INDEX idx_encuesta_alumno_alumno
+ON LOS_DESNORMALIZADOS.encuesta_alumno (alumno_id);
+
+CREATE INDEX idx_encuesta_alumno_encuesta
+ON LOS_DESNORMALIZADOS.encuesta_alumno (encuesta_id);
+
+------------------------------------------------------
+-- FIN DE ÍNDICES
+------------------------------------------------------
