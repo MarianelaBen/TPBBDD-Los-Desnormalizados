@@ -1,5 +1,5 @@
 CREATE TABLE LOS_DESNORMALIZADOS.profesor (
-	id BIGINT PRIMARY KEY,
+	id BIGINT PRIMARY KEY IDENTITY(1,1),
 	nombre VARCHAR(255) NOT NULL,
 	apellido VARCHAR(255) NOT NULL,
 	dni VARCHAR(10)NOT NULL,
@@ -23,7 +23,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.alumno (
 ); 
 
 CREATE TABLE LOS_DESNORMALIZADOS.sede(
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
     provincia VARCHAR(255),
     localidad VARCHAR(255),
     nombre VARCHAR(255),
@@ -32,15 +32,19 @@ CREATE TABLE LOS_DESNORMALIZADOS.sede(
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.institucion(
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
     nombre VARCHAR(255),
     razon_social VARCHAR(255),
     cuit VARCHAR(255)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.categoria(
-    id BIGINT PRIMARY KEY,
-    nombre VARCHAR(255) UNIQUE,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
+    nombre VARCHAR(255) UNIQUE CHECK(nombre IN ('Categoria N°:0', 
+                                                'Categoria N°:1', 
+                                                'Categoria N°:2',
+                                                'Categoria N°:3',
+                                                'Categoria N°:4'))
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.curso(
@@ -52,7 +56,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.curso(
     categoria_id BIGINT,
     fecha_inicio DATETIME,
     fecha_fin DATETIME,
-    duracion BIGINT,
+    duracion BIGINT CHECK(duracion BETWEEN 1 AND 10),
     precio_mensual DECIMAL(38, 2),
     FOREIGN KEY(sede_id) REFERENCES LOS_DESNORMALIZADOS.sede(id),
     FOREIGN KEY(profesor_id) REFERENCES LOS_DESNORMALIZADOS.profesor(id),
@@ -61,24 +65,24 @@ CREATE TABLE LOS_DESNORMALIZADOS.curso(
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.dia(
-    id SMALLINT  PRIMARY KEY,
-    nombre VARCHAR(255)
+    id SMALLINT PRIMARY KEY IDENTITY(1,1),
+    nombre VARCHAR(255) CHECK(nombre IN ('Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'))
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.turno(
-    id SMALLINT  PRIMARY KEY,
-    nombre VARCHAR(255) CHECK(nombre IN ('Ma�ana', 'Tarde', 'Noche'))
+    id SMALLINT  PRIMARY KEY IDENTITY(1,1),
+    nombre VARCHAR(255) CHECK(nombre IN ('Mañana', 'Tarde', 'Noche'))
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.horario_curso(
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
     curso_id BIGINT,
     turno_id SMALLINT,
     FOREIGN KEY(curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.horario_curso_dia(
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
     horario_curso_id BIGINT,
     dia_id SMALLINT,
     FOREIGN KEY(dia_id) REFERENCES LOS_DESNORMALIZADOS.dia(id),
@@ -86,7 +90,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.horario_curso_dia(
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.final (
-	id BIGINT PRIMARY KEY,
+	id BIGINT PRIMARY KEY IDENTITY(1,1),
 	fecha DATETIME,
 	hora VARCHAR(255),
 	curso_id BIGINT NOT NULL,
@@ -95,7 +99,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.final (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.final_inscripto (
-	nro_inscripcion BIGINT PRIMARY KEY,
+	nro_inscripcion BIGINT PRIMARY KEY IDENTITY(1,1),
 	alumno_id BIGINT NOT NULL,
 	profesor_id BIGINT NOT NULL,
 	presente BIT,
@@ -107,7 +111,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.final_inscripto (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.detalle_factura (
-	id BIGINT PRIMARY KEY,
+	id BIGINT PRIMARY KEY IDENTITY(1,1),
 	curso_id BIGINT, -- En la tabla figura como INTEGER(11)
 	importe DECIMAL(18,2),
 	mes BIGINT CHECK (mes BETWEEN 1 AND 12),
@@ -116,7 +120,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.detalle_factura (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.factura (
-	nro_factura BIGINT PRIMARY KEY,
+	nro_factura BIGINT PRIMARY KEY IDENTITY(1,1),
 	fecha_emision DATETIME DEFAULT GETDATE(),
 	fecha_vencimiento DATETIME NOT NULL,
 	alumno_id BIGINT,
@@ -128,12 +132,15 @@ CREATE TABLE LOS_DESNORMALIZADOS.factura (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.medio_de_pago (
-	id BIGINT PRIMARY KEY,
-	nombre VARCHAR(255)
+	id BIGINT PRIMARY KEY IDENTITY(1,1),
+	nombre VARCHAR(255) CHECK(nombre IN ('Efectivo',
+                                         'Tarjeta Crédito',
+                                         'Transferencia',
+                                         'Tarjeta Débito'))
 ); 
 
 CREATE TABLE LOS_DESNORMALIZADOS.pago (
-	id BIGINT PRIMARY KEY,
+	id BIGINT PRIMARY KEY IDENTITY(1,1),
 	factura_id BIGINT,
 	fecha DATETIME DEFAULT GETDATE(),
 	importe DECIMAL(18 ,2),
@@ -179,12 +186,12 @@ CREATE TABLE LOS_DESNORMALIZADOS.respuesta_encuesta (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.estado_inscripcion(
-    id SMALLINT PRIMARY KEY,
+    id SMALLINT PRIMARY KEY IDENTITY(1,1),
     nombre VARCHAR(255) CHECK(nombre IN ('Aprobada', 'Rechazada', 'Pendiente')),
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.inscripcion_curso(
-    nro_inscripcion BIGINT PRIMARY KEY,
+    nro_inscripcion BIGINT PRIMARY KEY IDENTITY(1,1),
     fecha_inscripcion DATETIME DEFAULT GETDATE(),
     alumno_id BIGINT,
     curso_id BIGINT,
@@ -196,7 +203,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.inscripcion_curso(
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.modulo(
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
     nombre VARCHAR(255),
     descripcion VARCHAR(255),
     curso_id BIGINT,
@@ -204,7 +211,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.modulo(
 )
 
 CREATE TABLE LOS_DESNORMALIZADOS.evaluacion(
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
     fecha_evaluacion DATETIME DEFAULT GETDATE(),
     modulo_id BIGINT,
     FOREIGN KEY(modulo_id) REFERENCES LOS_DESNORMALIZADOS.modulo(id)
@@ -222,7 +229,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.alumno_evaluado(
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.trabajo_practico(
-    id BIGINT PRIMARY KEY,
+    id BIGINT PRIMARY KEY IDENTITY(1,1),
     curso_id BIGINT,
     alumno_id BIGINT,
     fecha_evaluacion DATETIME DEFAULT GETDATE(),
