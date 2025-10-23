@@ -115,25 +115,26 @@ CREATE TABLE LOS_DESNORMALIZADOS.final_inscripto (
     FOREIGN KEY (final_id) REFERENCES LOS_DESNORMALIZADOS.final(id)
 );
 
+CREATE TABLE LOS_DESNORMALIZADOS.factura (
+	nro_factura BIGINT PRIMARY KEY IDENTITY(1,1),
+	fecha_emision DATETIME DEFAULT GETDATE(),
+	fecha_vencimiento DATETIME NOT NULL,
+	alumno_id BIGINT,
+	importe_total DECIMAL(18, 2),
+	FOREIGN KEY (alumno_id) REFERENCES LOS_DESNORMALIZADOS.alumno(legajo),
+    CONSTRAINT CHK_factura_fechas CHECK (fecha_vencimiento >= fecha_emision)
+);
+
+
 CREATE TABLE LOS_DESNORMALIZADOS.detalle_factura (
 	id BIGINT PRIMARY KEY IDENTITY(1,1),
 	curso_id BIGINT, -- En la tabla figura como INTEGER(11)
 	importe DECIMAL(18,2),
 	mes BIGINT CHECK (mes BETWEEN 1 AND 12),
 	anio BIGINT,
-	FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso)
-);
-
-CREATE TABLE LOS_DESNORMALIZADOS.factura (
-	nro_factura BIGINT PRIMARY KEY IDENTITY(1,1),
-	fecha_emision DATETIME DEFAULT GETDATE(),
-	fecha_vencimiento DATETIME NOT NULL,
-	alumno_id BIGINT,
-	detalle_factura_id BIGINT,
-	importe_total DECIMAL(18, 2),
-	FOREIGN KEY (alumno_id) REFERENCES LOS_DESNORMALIZADOS.alumno(legajo),
-	FOREIGN KEY (detalle_factura_id) REFERENCES LOS_DESNORMALIZADOS.detalle_factura(id),
-    CONSTRAINT CHK_factura_fechas CHECK (fecha_vencimiento >= fecha_emision)
+    factura_id BIGINT,
+	FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso),
+    FOREIGN KEY (factura_id) REFERENCES LOS_DESNORMALIZADOS.factura(nro_factura)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.medio_de_pago (
@@ -329,3 +330,4 @@ ON LOS_DESNORMALIZADOS.encuesta_alumno (encuesta_id);
 ------------------------------------------------------
 -- FIN DE ÍNDICES
 ------------------------------------------------------
+
