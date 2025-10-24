@@ -7,6 +7,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.profesor (
 	apellido VARCHAR(255) NOT NULL,
 	dni VARCHAR(10)NOT NULL,
 	direccion VARCHAR(255),
+    fecha_nacimiento DATETIME,
 	correo VARCHAR(255),
 	telefono VARCHAR(255),
 	provincia VARCHAR(255),
@@ -31,8 +32,10 @@ CREATE TABLE LOS_DESNORMALIZADOS.sede(
     localidad VARCHAR(255),
     nombre VARCHAR(255),
     direccion VARCHAR(255),
-    telefono VARCHAR(255)
+    telefono VARCHAR(255),
+    mail VARCHAR(255)
 );
+
 
 CREATE TABLE LOS_DESNORMALIZADOS.institucion(
     id BIGINT PRIMARY KEY IDENTITY(1,1),
@@ -458,6 +461,7 @@ BEGIN
 END;
 GO
 
+
 ------------------------------------------------------
 -- 2) Migrar sedes
 ------------------------------------------------------
@@ -480,6 +484,33 @@ BEGIN
         WHERE s.nombre = TRIM(m.Sede_Nombre)
           AND ISNULL(s.provincia,'') = ISNULL(TRIM(m.Sede_Provincia),'')
           AND ISNULL(s.localidad,'') = ISNULL(TRIM(m.Sede_Localidad),'')
+      );
+END;
+GO
+
+------------------------------------------------------
+-- 3) Migrar profesores
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_profesores
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO LOS_DESNORMALIZADOS.profesor (nombre, apellido, dni, direccion, correo, telefono, provincia, localidad, fecha_nacimiento)
+    SELECT DISTINCT
+        TRIM(Profesor_nombre),
+        TRIM(Profesor_Apellido),
+        TRIM(Profesor_Dni),
+        TRIM(Profesor_Direccion),
+        TRIM(Profesor_Mail),
+        TRIM(Profesor_Telefono),
+        TRIM(Profesor_Provincia),
+        TRIM(Profesor_Localidad),
+        Profesor_FechaNacimiento
+    FROM gd_esquema.Maestra m
+    WHERE Profesor_Dni IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM LOS_DESNORMALIZADOS.profesor p
+        WHERE p.dni = TRIM(m.Profesor_Dni)
       );
 END;
 GO
