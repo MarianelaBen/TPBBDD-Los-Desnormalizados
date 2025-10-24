@@ -1125,20 +1125,35 @@
 											"top": 1263,
 											"width": 190.23779296875,
 											"height": 13
+										},
+										{
+											"_type": "ERDColumnView",
+											"_id": "AAAAAAGaFo2dRtP6tr4=",
+											"_parent": {
+												"$ref": "AAAAAAGZTazC8OjiphU="
+											},
+											"model": {
+												"$ref": "AAAAAAGaFo2dCdP3sxo="
+											},
+											"font": "Arial;13;0",
+											"left": 477,
+											"top": 1278,
+											"width": 190.23779296875,
+											"height": 13
 										}
 									],
 									"font": "Arial;13;0",
 									"left": 472,
 									"top": 1183,
 									"width": 200.23779296875,
-									"height": 98
+									"height": 113
 								}
 							],
 							"font": "Arial;13;0",
 							"left": 472,
 							"top": 1160,
 							"width": 200.23779296875,
-							"height": 121,
+							"height": 136,
 							"nameLabel": {
 								"$ref": "AAAAAAGZTazC8OjhTZk="
 							},
@@ -4025,7 +4040,7 @@
 									"visible": false,
 									"font": "Arial;13;0",
 									"left": 556,
-									"top": 1301,
+									"top": 1308,
 									"height": 13,
 									"alpha": 1.5707963267948966,
 									"distance": 15,
@@ -4059,7 +4074,7 @@
 									},
 									"font": "Arial;13;0",
 									"left": 556,
-									"top": 1299,
+									"top": 1314,
 									"height": 13,
 									"alpha": -0.5235987755982988,
 									"distance": 30,
@@ -4076,7 +4091,7 @@
 								"$ref": "AAAAAAGZgoI/W/cZjXs="
 							},
 							"lineStyle": 2,
-							"points": "571:1336;571:1280",
+							"points": "571:1336;571:1295",
 							"nameLabel": {
 								"$ref": "AAAAAAGZgoNy1/dO00E="
 							},
@@ -7154,6 +7169,16 @@
 								"$ref": "AAAAAAGZTazC7+jeQc8="
 							},
 							"name": "telefono",
+							"type": "VARCHAR",
+							"length": "255"
+						},
+						{
+							"_type": "ERDColumn",
+							"_id": "AAAAAAGaFo2dCdP3sxo=",
+							"_parent": {
+								"$ref": "AAAAAAGZTazC7+jeQc8="
+							},
+							"name": "mail",
 							"type": "VARCHAR",
 							"length": "255"
 						}

@@ -432,3 +432,28 @@ BEGIN
     END;
 END;
 GO
+
+------------------------------------------------------
+-- STORED PROCEDURES DE MIGRACIÓN DE DATOS
+------------------------------------------------------
+
+------------------------------------------------------
+-- 1) Migrar instituciones
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_instituciones
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO LOS_DESNORMALIZADOS.institucion (nombre, razon_social, cuit)
+    SELECT DISTINCT
+        TRIM(m.Institucion_Nombre) as nombre,
+        TRIM(m.Institucion_RazonSocial) as razon_social,
+        TRIM(m.Institucion_Cuit) as cuit
+    FROM gd_esquema.Maestra m
+    WHERE m.Institucion_Nombre IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM LOS_DESNORMALIZADOS.institucion i
+        WHERE i.nombre = TRIM(m.Institucion_Nombre)
+      );
+END;
+GO
