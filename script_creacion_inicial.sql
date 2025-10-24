@@ -358,4 +358,77 @@ BEGIN
 END;
 GO
 
+------------------------------------------------------
+-- TRIGGER PARA VALIDAR FACTURA PAGADA
+------------------------------------------------------
+CREATE TRIGGER trg_validar_pago_factura
+ON LOS_DESNORMALIZADOS.pago
+AFTER INSERT, UPDATE
+AS
+BEGIN
+    SET NOCOUNT ON;
 
+    IF EXISTS (
+        SELECT 1
+        FROM inserted i
+        JOIN LOS_DESNORMALIZADOS.factura f ON f.nro_factura = i.factura_id
+        GROUP BY i.factura_id, f.importe_total
+        HAVING SUM(i.importe) + ISNULL((
+            SELECT SUM(p.importe)
+            FROM LOS_DESNORMALIZADOS.pago p
+            WHERE p.factura_id = i.factura_id
+              AND p.id NOT IN (SELECT id FROM inserted)
+        ), 0) > f.importe_total
+    )
+    BEGIN
+        RAISERROR('El total de pagos supera el importe total de la factura.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END
+END;
+GO
+
+
+------------------------------------------------------
+-- TRIGGER PARA VALIDAR INSCRIPCIÓN A CURSO ÚNICA
+------------------------------------------------------
+CREATE TRIGGER trg_validar_inscripcion_unica
+ON LOS_DESNORMALIZADOS.inscripcion_curso
+AFTER INSERT
+AS
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM inserted ins
+        JOIN LOS_DESNORMALIZADOS.inscripcion_curso i
+            ON i.alumno_id = ins.alumno_id AND i.curso_id = ins.curso_id
+        WHERE i.nro_inscripcion <> ins.nro_inscripcion
+    )
+    BEGIN
+        RAISERROR('El alumno ya está inscripto en este curso.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END;
+END;
+GO
+
+------------------------------------------------------
+-- TRIGGER PARA VALIDAR INSCRIPCIÓN A FINAL ÚNICA
+------------------------------------------------------
+
+CREATE TRIGGER trg_validar_final_unico
+ON LOS_DESNORMALIZADOS.final_inscripto
+AFTER INSERT
+AS
+BEGIN
+    IF EXISTS (
+        SELECT 1
+        FROM inserted ins
+        JOIN LOS_DESNORMALIZADOS.final_inscripto fi
+            ON fi.alumno_id = ins.alumno_id AND fi.final_id = ins.final_id
+        WHERE fi.nro_inscripcion <> ins.nro_inscripcion
+    )
+    BEGIN
+        RAISERROR('El alumno ya está inscripto en este final.', 16, 1);
+        ROLLBACK TRANSACTION;
+    END;
+END;
+GO
