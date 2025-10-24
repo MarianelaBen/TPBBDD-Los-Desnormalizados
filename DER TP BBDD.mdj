@@ -200,7 +200,7 @@
 									"font": "Arial;13;1",
 									"left": 1160,
 									"top": 429,
-									"width": 200.23779296875,
+									"width": 252.2568359375,
 									"height": 13,
 									"text": "alumno"
 								},
@@ -226,7 +226,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 452,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -241,7 +241,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 467,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -256,7 +256,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 482,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -271,7 +271,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 497,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -286,7 +286,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 512,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -301,7 +301,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 527,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -316,7 +316,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 542,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -331,7 +331,7 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 557,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
 											"height": 13
 										},
 										{
@@ -346,22 +346,37 @@
 											"font": "Arial;13;0",
 											"left": 1165,
 											"top": 572,
-											"width": 190.23779296875,
+											"width": 242.2568359375,
+											"height": 13
+										},
+										{
+											"_type": "ERDColumnView",
+											"_id": "AAAAAAGaFrbJTNQOTMA=",
+											"_parent": {
+												"$ref": "AAAAAAGZTZoRlee9jxA="
+											},
+											"model": {
+												"$ref": "AAAAAAGaFrbJH9QLAvU="
+											},
+											"font": "Arial;13;0",
+											"left": 1165,
+											"top": 587,
+											"width": 242.2568359375,
 											"height": 13
 										}
 									],
 									"font": "Arial;13;0",
 									"left": 1160,
 									"top": 447,
-									"width": 200.23779296875,
-									"height": 143
+									"width": 252.2568359375,
+									"height": 158
 								}
 							],
 							"font": "Arial;13;0",
 							"left": 1160,
 							"top": 424,
-							"width": 200.23779296875,
-							"height": 166,
+							"width": 252.2568359375,
+							"height": 181,
 							"nameLabel": {
 								"$ref": "AAAAAAGZTZoRlee8h6s="
 							},
@@ -2966,7 +2981,7 @@
 										"$ref": "AAAAAAGZaDPsQ2Cx74o="
 									},
 									"font": "Arial;13;0",
-									"left": 1384,
+									"left": 1436,
 									"top": 507,
 									"height": 13,
 									"alpha": 0.5235987755982988,
@@ -3000,7 +3015,7 @@
 							"tail": {
 								"$ref": "AAAAAAGZTZoRlee7r1A="
 							},
-							"points": "1359:528;1504:528;1504:720",
+							"points": "1411:528;1504:528;1504:720",
 							"nameLabel": {
 								"$ref": "AAAAAAGZaDPsQ2CyW90="
 							},
@@ -5190,7 +5205,7 @@
 										"$ref": "AAAAAAGZhz2pEjrDcro="
 									},
 									"font": "Arial;13;0",
-									"left": 1384,
+									"left": 1436,
 									"top": 475,
 									"height": 13,
 									"alpha": 0.5235987755982988,
@@ -5225,7 +5240,7 @@
 								"$ref": "AAAAAAGZTZoRlee7r1A="
 							},
 							"lineStyle": 2,
-							"points": "1359:496;1627:496;1627:1136",
+							"points": "1411:496;1627:496;1627:1136",
 							"nameLabel": {
 								"$ref": "AAAAAAGZhz2pEjrEHM0="
 							},
@@ -6587,6 +6602,16 @@
 							"name": "localidad",
 							"type": "VARCHAR",
 							"length": "255"
+						},
+						{
+							"_type": "ERDColumn",
+							"_id": "AAAAAAGaFrbJH9QLAvU=",
+							"_parent": {
+								"$ref": "AAAAAAGZTZoRlee5Nsk="
+							},
+							"name": "fecha_nacimiento",
+							"type": "DATETIME",
+							"length": 0
 						}
 					]
 				},

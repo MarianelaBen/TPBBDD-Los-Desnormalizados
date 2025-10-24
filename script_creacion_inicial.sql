@@ -18,12 +18,13 @@ CREATE TABLE LOS_DESNORMALIZADOS.alumno (
 	legajo BIGINT PRIMARY KEY,
 	nombre VARCHAR(255) NOT NULL,
 	apellido VARCHAR(255) NOT NULL,
-	dni VARCHAR(10) NOT NULL,
+	dni BIGINT NOT NULL,
 	direccion VARCHAR(255),
 	telefono VARCHAR(255),
 	mail VARCHAR(255),
 	provincia VARCHAR(255),
-	ciudad VARCHAR(255)
+	localidad VARCHAR(255),
+    fecha_nacimiento DATETIME
 ); 
 
 CREATE TABLE LOS_DESNORMALIZADOS.sede(
@@ -511,6 +512,34 @@ BEGIN
       AND NOT EXISTS (
         SELECT 1 FROM LOS_DESNORMALIZADOS.profesor p
         WHERE p.dni = TRIM(m.Profesor_Dni)
+      );
+END;
+GO
+
+------------------------------------------------------
+-- 4) Migrar alumnos
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_alumnos
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO LOS_DESNORMALIZADOS.alumno (legajo, nombre, apellido, dni, direccion, telefono, mail, provincia, localidad, fecha_nacimiento)
+    SELECT DISTINCT
+        Alumno_Legajo,
+        TRIM(Alumno_Nombre),
+        TRIM(Alumno_Apellido),
+        Alumno_Dni,
+        TRIM(Alumno_Direccion),
+        TRIM(Alumno_Telefono),
+        TRIM(Alumno_Mail),
+        TRIM(Alumno_Provincia),
+        TRIM(Alumno_Localidad),
+        Alumno_FechaNacimiento
+    FROM gd_esquema.Maestra m
+    WHERE Alumno_Legajo IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM LOS_DESNORMALIZADOS.alumno a
+        WHERE a.legajo = m.Alumno_Legajo
       );
 END;
 GO
