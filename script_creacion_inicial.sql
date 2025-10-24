@@ -543,3 +543,22 @@ BEGIN
       );
 END;
 GO
+
+------------------------------------------------------
+-- 5) Migrar categorías
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_categorias
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO LOS_DESNORMALIZADOS.categoria (nombre)
+    SELECT DISTINCT TRIM(Curso_Categoria)
+    FROM gd_esquema.Maestra m
+    WHERE Curso_Categoria IS NOT NULL
+      AND TRIM(Curso_Categoria) <> ''
+      AND NOT EXISTS (
+        SELECT 1 FROM LOS_DESNORMALIZADOS.categoria c
+        WHERE c.nombre = TRIM(m.Curso_Categoria)
+      );
+END;
+GO
