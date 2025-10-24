@@ -457,3 +457,29 @@ BEGIN
       );
 END;
 GO
+
+------------------------------------------------------
+-- 2) Migrar sedes
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_sedes
+AS
+BEGIN
+    SET NOCOUNT ON;
+    INSERT INTO LOS_DESNORMALIZADOS.sede (provincia, localidad, nombre, direccion, telefono, mail)
+    SELECT DISTINCT
+        TRIM(Sede_Provincia),
+        TRIM(Sede_Localidad),
+        TRIM(Sede_Nombre),
+        TRIM(Sede_Direccion),
+        TRIM(Sede_Telefono),
+        TRIM(Sede_Mail)
+    FROM gd_esquema.Maestra m
+    WHERE Sede_Nombre IS NOT NULL
+      AND NOT EXISTS (
+        SELECT 1 FROM LOS_DESNORMALIZADOS.sede s
+        WHERE s.nombre = TRIM(m.Sede_Nombre)
+          AND ISNULL(s.provincia,'') = ISNULL(TRIM(m.Sede_Provincia),'')
+          AND ISNULL(s.localidad,'') = ISNULL(TRIM(m.Sede_Localidad),'')
+      );
+END;
+GO
