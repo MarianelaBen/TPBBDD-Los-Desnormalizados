@@ -1,35 +1,51 @@
--- Ajust� el nombre del schema si corresponde
-DECLARE @schema SYSNAME = N'LOS_DESNORMALIZADOS';
+USE GD2C2025;
+GO
+
 DECLARE @sql NVARCHAR(MAX);
 
--- 1) DROP FOREIGN KEYS que afectan tablas del schema
+-- 1️⃣ Eliminar FOREIGN KEYS
 SET @sql = N'';
-SELECT @sql += N'
-IF OBJECT_ID(''' + QUOTENAME(OBJECT_SCHEMA_NAME(fk.parent_object_id)) + '.' + QUOTENAME(OBJECT_NAME(fk.parent_object_id)) + ''',''U'') IS NOT NULL
-    ALTER TABLE ' + QUOTENAME(OBJECT_SCHEMA_NAME(fk.parent_object_id)) + '.' + QUOTENAME(OBJECT_NAME(fk.parent_object_id))
-    + ' DROP CONSTRAINT ' + QUOTENAME(fk.name) + ';'
-FROM sys.foreign_keys fk
-WHERE OBJECT_SCHEMA_NAME(fk.parent_object_id) = @schema
-   OR OBJECT_SCHEMA_NAME(fk.referenced_object_id) = @schema;
+SELECT @sql += N'ALTER TABLE [' + OBJECT_SCHEMA_NAME(f.parent_object_id) + '].[' +
+               OBJECT_NAME(f.parent_object_id) + '] DROP CONSTRAINT [' + f.name + '];' + CHAR(13)
+FROM sys.foreign_keys AS f
+WHERE OBJECT_SCHEMA_NAME(f.parent_object_id) = 'LOS_DESNORMALIZADOS';
 
-PRINT '-- Sentencias para eliminar FOREIGN KEYS:';
-PRINT @sql;
--- Ejecutar (descoment� si est�s listo)
 EXEC sp_executesql @sql;
 
-
--- 2) DROP TABLE para todas las tablas del schema
+-- 2️⃣ Eliminar TRIGGERS (de tabla y de base)
 SET @sql = N'';
-SELECT @sql += N'
-IF OBJECT_ID(''' + QUOTENAME(s.name) + '.' + QUOTENAME(t.name) + ''',''U'') IS NOT NULL
-    DROP TABLE ' + QUOTENAME(s.name) + '.' + QUOTENAME(t.name) + ';'
-FROM sys.tables t
-JOIN sys.schemas s ON t.schema_id = s.schema_id
-WHERE s.name = @schema
--- Opcional: ordenar para ver el orden en que se generan (no necesario luego de eliminar FKs)
-ORDER BY t.name;
+SELECT @sql += N'DROP TRIGGER [' + OBJECT_SCHEMA_NAME(t.object_id) + '].[' + t.name + '];' + CHAR(13)
+FROM sys.triggers AS t
+WHERE OBJECT_SCHEMA_NAME(t.parent_id) = 'LOS_DESNORMALIZADOS'
+   OR OBJECT_SCHEMA_NAME(t.object_id) = 'LOS_DESNORMALIZADOS';
 
-PRINT ''-- Sentencias para DROP TABLE:'';
-PRINT @sql;
--- Ejecutar (descoment� si est�s listo)
 EXEC sp_executesql @sql;
+
+-- 3️⃣ Eliminar VIEWS
+SET @sql = N'';
+SELECT @sql += N'DROP VIEW [' + OBJECT_SCHEMA_NAME(v.object_id) + '].[' + v.name + '];' + CHAR(13)
+FROM sys.views AS v
+WHERE OBJECT_SCHEMA_NAME(v.object_id) = 'LOS_DESNORMALIZADOS';
+
+EXEC sp_executesql @sql;
+
+-- 4️⃣ Eliminar PROCEDURES
+SET @sql = N'';
+SELECT @sql += N'DROP PROCEDURE [' + OBJECT_SCHEMA_NAME(p.object_id) + '].[' + p.name + '];' + CHAR(13)
+FROM sys.procedures AS p
+WHERE OBJECT_SCHEMA_NAME(p.object_id) = 'LOS_DESNORMALIZADOS';
+
+EXEC sp_executesql @sql;
+
+-- 5️⃣ Eliminar TABLES
+SET @sql = N'';
+SELECT @sql += N'DROP TABLE [' + OBJECT_SCHEMA_NAME(t.object_id) + '].[' + t.name + '];' + CHAR(13)
+FROM sys.tables AS t
+WHERE OBJECT_SCHEMA_NAME(t.object_id) = 'LOS_DESNORMALIZADOS';
+
+EXEC sp_executesql @sql;
+
+-- 6️⃣ Finalmente, eliminar el SCHEMA
+IF EXISTS (SELECT 1 FROM sys.schemas WHERE name = 'LOS_DESNORMALIZADOS')
+    EXEC('DROP SCHEMA LOS_DESNORMALIZADOS;');
+GO
