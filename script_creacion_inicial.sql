@@ -78,7 +78,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.curso(
 
 CREATE TABLE LOS_DESNORMALIZADOS.dia(
     id SMALLINT PRIMARY KEY IDENTITY(1,1),
-    nombre VARCHAR(255) CHECK(nombre IN ('Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes'))
+    nombre VARCHAR(255) CHECK(nombre IN ('Lunes', 'Martes', 'Miercoles', 'Jueves', 'Viernes'))
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.turno(
@@ -565,5 +565,142 @@ BEGIN
         SELECT 1 FROM LOS_DESNORMALIZADOS.categoria c
         WHERE c.nombre = TRIM(m.Curso_Categoria)
       );
+END;
+GO
+
+------------------------------------------------------
+-- 6) Migrar turnos
+------------------------------------------------------
+
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_turnos
+AS
+BEGIN
+	SET NOCOUNT ON;
+	INSERT INTO LOS_DESNORMALIZADOS.turno (nombre)
+	SELECT DISTINCT
+		TRIM(m.Curso_Turno)
+	FROM
+		gd_esquema.Maestra m
+	WHERE
+		m.Curso_Turno IS NOT NULL
+		AND NOT EXISTS (
+			SELECT 1 FROM LOS_DESNORMALIZADOS.turno t
+			WHERE t.nombre = TRIM(m.Curso_Turno)
+		);
+END;
+GO
+
+------------------------------------------------------
+-- 7) Migrar dias
+------------------------------------------------------
+
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_dias
+AS
+BEGIN
+	SET NOCOUNT ON;
+	INSERT INTO LOS_DESNORMALIZADOS.dia (nombre)
+	SELECT DISTINCT
+		TRIM(m.Curso_Dia)
+	FROM
+		gd_esquema.Maestra m
+	WHERE
+		m.Curso_Dia IS NOT NULL
+		AND NOT EXISTS (
+			SELECT 1 FROM LOS_DESNORMALIZADOS.dia d
+			WHERE d.nombre = TRIM(m.Curso_Dia)
+		);
+END;
+GO
+
+------------------------------------------------------
+-- 8) Migrar cursos
+------------------------------------------------------
+
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_cursos
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	INSERT INTO LOS_DESNORMALIZADOS.curso (
+		sede_id,
+		profesor_id,
+		nombre,
+		descripcion,
+		categoria_id,
+		fecha_inicio,
+		fecha_fin,
+		duracion,
+		precio_mensual
+	)
+	SELECT DISTINCT
+		s.id,
+		p.id,
+		TRIM(m.Curso_Nombre),
+		TRIM(m.Curso_Descripcion),
+		cat.id,
+		m.Curso_FechaInicio,
+		m.Curso_FechaFin,
+		m.Curso_DuracionMeses,
+		m.Curso_PrecioMensual
+	FROM
+		gd_esquema.Maestra m
+	-- Unimos con las tablas ya migradas para obtener los IDs
+	JOIN
+		LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre)
+								   AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '')
+								   AND ISNULL(s.localidad, '') = ISNULL(TRIM(m.Sede_Localidad), '')
+	JOIN
+		LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m.Profesor_Dni)
+	LEFT JOIN -- Usamos LEFT JOIN por si alguna categoría es NULL
+		LOS_DESNORMALIZADOS.categoria cat ON cat.nombre = TRIM(m.Curso_Categoria)
+	WHERE
+		m.Curso_Codigo IS NOT NULL -- Nos aseguramos de que el curso tenga un código
+		AND NOT EXISTS ( -- Condición para no insertar duplicados
+			SELECT 1
+			FROM LOS_DESNORMALIZADOS.curso c
+			WHERE c.nombre = TRIM(m.Curso_Nombre)
+			  AND c.profesor_id = p.id
+			  AND c.sede_id = s.id
+			  AND c.fecha_inicio = m.Curso_FechaInicio
+		);
+END;
+GO
+
+------------------------------------------------------
+-- 9) Migrar modulos
+------------------------------------------------------
+
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_modulos
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	INSERT INTO LOS_DESNORMALIZADOS.modulo (nombre, descripcion, curso_id)
+	SELECT DISTINCT
+		TRIM(m.Modulo_Nombre),
+		TRIM(m.Modulo_Descripcion),
+		c.codigo_curso -- Este es el ID que necesitamos
+	FROM
+		gd_esquema.Maestra m
+	-- Necesitamos recrear los JOINs para identificar de forma única a qué curso pertenece el módulo
+	JOIN
+		LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre)
+								   AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '')
+								   AND ISNULL(s.localidad, '') = ISNULL(TRIM(m.Sede_Localidad), '')
+	JOIN
+		LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m.Profesor_Dni)
+	JOIN
+		LOS_DESNORMALIZADOS.curso c ON c.sede_id = s.id
+								   AND c.profesor_id = p.id
+								   AND c.nombre = TRIM(m.Curso_Nombre)
+								   AND c.fecha_inicio = m.Curso_FechaInicio
+	WHERE
+		m.Modulo_Nombre IS NOT NULL
+		AND NOT EXISTS ( -- Condición para no insertar duplicados
+			SELECT 1
+			FROM LOS_DESNORMALIZADOS.modulo mo
+			WHERE mo.curso_id = c.codigo_curso
+			  AND mo.nombre = TRIM(m.Modulo_Nombre)
+		);
 END;
 GO
