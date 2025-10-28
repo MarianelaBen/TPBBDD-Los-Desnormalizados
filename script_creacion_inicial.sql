@@ -340,6 +340,9 @@ CREATE INDEX idx_encuesta_alumno_alumno
 CREATE INDEX idx_encuesta_alumno_encuesta
     ON LOS_DESNORMALIZADOS.encuesta_alumno (encuesta_id);
 
+CREATE INDEX idx_detalle_unicidad
+    ON LOS_DESNORMALIZADOS.detalle_factura (factura_id, curso_id, anio, mes, importe);
+
 ------------------------------------------------------
 -- FIN DE ÍNDICES
 ------------------------------------------------------
@@ -1097,6 +1100,72 @@ WHERE pg.id IS NULL;
 END;
 GO
 
+------------------------------------------------------
+-- 16) Migrar Detalle Factura
+------------------------------------------------------
+
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_detalle_factura
+    @fast_mode BIT = 1
+    AS
+BEGIN
+    SET NOCOUNT ON;
+
+    -- Opcional: deshabilitar trigger para acelerar carga masiva
+    IF @fast_mode = 1
+        DISABLE TRIGGER LOS_DESNORMALIZADOS.trg_actualizar_importe_factura
+        ON LOS_DESNORMALIZADOS.detalle_factura;
+
+INSERT INTO LOS_DESNORMALIZADOS.detalle_factura
+(curso_id, importe, mes, anio, factura_id)
+SELECT
+    c.codigo_curso,
+    CAST(m.Detalle_Factura_Importe AS DECIMAL(18,2)),
+    CAST(m.Periodo_Mes AS INT),
+    CAST(m.Periodo_Anio AS INT),
+    f.nro_factura
+FROM gd_esquema.Maestra m
+         JOIN LOS_DESNORMALIZADOS.alumno a
+              ON a.legajo = m.Alumno_Legajo
+         JOIN LOS_DESNORMALIZADOS.factura f
+              ON f.nro_factura = m.Factura_Numero
+                  AND CAST(f.fecha_emision AS DATE) = CAST(m.Factura_FechaEmision AS DATE)
+                  AND f.alumno_id = a.legajo
+         JOIN LOS_DESNORMALIZADOS.curso c
+              ON c.codigo_curso = m.Curso_Codigo
+    -- Anti-join para evitar duplicados
+         LEFT JOIN LOS_DESNORMALIZADOS.detalle_factura d
+                   ON d.factura_id = f.nro_factura
+                       AND d.curso_id   = c.codigo_curso
+                       AND d.mes        = CAST(m.Periodo_Mes AS INT)
+                       AND d.anio       = CAST(m.Periodo_Anio AS INT)
+                       AND d.importe    = CAST(m.Detalle_Factura_Importe AS DECIMAL(18,2))
+WHERE
+    m.Factura_Numero IS NOT NULL
+  AND m.Factura_FechaEmision IS NOT NULL
+  AND m.Alumno_Legajo IS NOT NULL
+  AND m.Curso_Codigo IS NOT NULL
+  AND m.Periodo_Mes IS NOT NULL
+  AND m.Periodo_Anio IS NOT NULL
+  AND m.Detalle_Factura_Importe IS NOT NULL
+  AND d.id IS NULL;
+
+-- Recalcular importes de facturas en un solo paso si deshabilitaste el trigger
+IF @fast_mode = 1
+BEGIN
+UPDATE f
+SET f.importe_total = x.suma
+    FROM LOS_DESNORMALIZADOS.factura f
+        JOIN (
+            SELECT factura_id, SUM(importe) AS suma
+            FROM LOS_DESNORMALIZADOS.detalle_factura
+            GROUP BY factura_id
+        ) x ON x.factura_id = f.nro_factura;
+
+ENABLE TRIGGER LOS_DESNORMALIZADOS.trg_actualizar_importe_factura
+        ON LOS_DESNORMALIZADOS.detalle_factura;
+END
+END
+GO
 
 
 EXEC LOS_DESNORMALIZADOS.migrar_instituciones
@@ -1117,3 +1186,4 @@ EXEC LOS_DESNORMALIZADOS.migrar_finales
 EXEC LOS_DESNORMALIZADOS.migrar_medios_pago
 EXEC LOS_DESNORMALIZADOS.migrar_facturas
 EXEC LOS_DESNORMALIZADOS.migrar_pagos
+EXEC LOS_DESNORMALIZADOS.migrar_detalle_factura
