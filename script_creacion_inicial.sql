@@ -299,6 +299,10 @@ CREATE INDEX idx_inscripcion_curso_estado
 CREATE INDEX idx_trabajo_practico
     ON LOS_DESNORMALIZADOS.trabajo_practico (id);
 
+CREATE INDEX idx_pago_unicidad
+    ON LOS_DESNORMALIZADOS.pago (factura_id, medio_pago_id, fecha, importe);
+
+
 -- final_inscripto
 CREATE INDEX idx_final_inscripto_alumno
     ON LOS_DESNORMALIZADOS.final_inscripto (alumno_id);
@@ -366,36 +370,6 @@ SET f.importe_total = (
     INNER JOIN @facturas_afectadas fa ON f.nro_factura = fa.factura_id;
 END;
 GO
-
-------------------------------------------------------
--- TRIGGER PARA VALIDAR FACTURA PAGADA
-------------------------------------------------------
-CREATE TRIGGER trg_validar_pago_factura
-    ON LOS_DESNORMALIZADOS.pago
-    AFTER INSERT, UPDATE
-                      AS
-BEGIN
-    SET NOCOUNT ON;
-
-    IF EXISTS (
-        SELECT 1
-        FROM inserted i
-        JOIN LOS_DESNORMALIZADOS.factura f ON f.nro_factura = i.factura_id
-        GROUP BY i.factura_id, f.importe_total
-        HAVING SUM(i.importe) + ISNULL((
-            SELECT SUM(p.importe)
-            FROM LOS_DESNORMALIZADOS.pago p
-            WHERE p.factura_id = i.factura_id
-              AND p.id NOT IN (SELECT id FROM inserted)
-        ), 0) > f.importe_total
-    )
-BEGIN
-        RAISERROR('El total de pagos supera el importe total de la factura.', 16, 1);
-ROLLBACK TRANSACTION;
-END
-END;
-GO
-
 
 ------------------------------------------------------
 -- TRIGGER PARA VALIDAR INSCRIPCIÓN A CURSO ÚNICA
@@ -1079,33 +1053,47 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_pagos
 BEGIN
   SET NOCOUNT ON;
 
+  -- Solo pagos válidos
+WITH pagos_validos AS (
+    SELECT
+        m.Factura_Numero,
+        m.Factura_FechaEmision,
+        m.Alumno_Legajo,
+        m.Pago_Fecha,
+        m.Pago_Importe,
+        m.Pago_MedioPago
+    FROM gd_esquema.Maestra m
+    WHERE
+        m.Pago_Fecha IS NOT NULL
+      AND m.Pago_Importe IS NOT NULL
+      AND m.Pago_MedioPago IS NOT NULL
+      AND m.Factura_Numero IS NOT NULL
+      AND m.Factura_FechaEmision IS NOT NULL
+      AND m.Alumno_Legajo IS NOT NULL
+)
+
 INSERT INTO LOS_DESNORMALIZADOS.pago
-(factura_id, fecha, importe, medio_pago_id)
-SELECT DISTINCT
+  (factura_id, fecha, importe, medio_pago_id)
+SELECT
     f.nro_factura,
-    CAST(m.Pago_Fecha AS DATE),
-    TRY_CAST(m.Pago_Importe AS DECIMAL(12,2)),
+    CAST(pv.Pago_Fecha AS DATE),
+    CAST(pv.Pago_Importe AS DECIMAL(12,2)),
     mp.id
-FROM gd_esquema.Maestra m
-         JOIN LOS_DESNORMALIZADOS.medio_de_pago mp
-              ON TRIM(mp.nombre) = TRIM(m.Pago_MedioPago)
-    -- localizar la factura por (numero + fecha + alumno + curso)
+FROM pagos_validos pv
          JOIN LOS_DESNORMALIZADOS.alumno a
-              ON a.legajo = m.Alumno_Legajo
+              ON a.legajo = pv.Alumno_Legajo
          JOIN LOS_DESNORMALIZADOS.factura f
-              ON f.nro_factura   = m.Factura_Numero
-                  AND CAST(f.fecha_emision AS DATE) = CAST(m.Factura_FechaEmision AS DATE)
+              ON f.nro_factura = pv.Factura_Numero
+                  AND CAST(f.fecha_emision AS DATE) = CAST(pv.Factura_FechaEmision AS DATE)
                   AND f.alumno_id = a.legajo
-WHERE m.Pago_Fecha IS NOT NULL
-  AND m.Pago_Importe IS NOT NULL
-  AND NOT EXISTS (
-    SELECT 1
-    FROM LOS_DESNORMALIZADOS.pago pg
-    WHERE pg.factura_id = f.nro_factura
-      AND pg.medio_pago_id = mp.id
-      AND CAST(pg.fecha AS DATE) = CAST(m.Pago_Fecha AS DATE)
-      AND pg.importe = TRY_CAST(m.Pago_Importe AS DECIMAL(12,2))
-);
+         JOIN LOS_DESNORMALIZADOS.medio_de_pago mp
+              ON TRIM(mp.nombre) = TRIM(pv.Pago_MedioPago)
+         LEFT JOIN LOS_DESNORMALIZADOS.pago pg
+                   ON pg.factura_id = f.nro_factura
+                       AND pg.medio_pago_id = mp.id
+                       AND CAST(pg.fecha AS DATE) = CAST(pv.Pago_Fecha AS DATE)
+                       AND pg.importe = CAST(pv.Pago_Importe AS DECIMAL(12,2))
+WHERE pg.id IS NULL;
 END;
 GO
 
