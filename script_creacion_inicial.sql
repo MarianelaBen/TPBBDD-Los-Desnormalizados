@@ -125,7 +125,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.final_inscripto (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.factura (
-                                             nro_factura BIGINT PRIMARY KEY IDENTITY(1,1),
+                                             nro_factura BIGINT PRIMARY KEY,
                                              fecha_emision DATETIME DEFAULT GETDATE(),
                                              fecha_vencimiento DATETIME NOT NULL,
                                              alumno_id BIGINT,
@@ -964,46 +964,153 @@ WHERE m.Examen_Final_Fecha IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM LOS_DESNORMALIZADOS.final f WHERE f.curso_id = c.codigo_curso AND CAST(f.fecha AS DATE) = CAST(m.Examen_Final_Fecha AS DATE));
 
 -- Paso B: Inscribir a los alumnos en los finales y cargar sus notas
-INSERT INTO LOS_DESNORMALIZADOS.final_inscripto (alumno_id, profesor_id, presente, nota, final_id, fecha_inscripcion)
+INSERT INTO LOS_DESNORMALIZADOS.final_inscripto
+(alumno_id, profesor_id, presente, nota, final_id, fecha_inscripcion)
 SELECT DISTINCT
-    a.legajo,
-    p.id,
-    m_inscripcion.Evaluacion_Final_Presente,
-    m_inscripcion.Evaluacion_Final_Nota,
-    f.id,
-    m_inscripcion.Inscripcion_Final_Fecha
-FROM
-    -- Empezamos por las filas que SÍ tienen la nota del alumno.
-    gd_esquema.Maestra AS m_inscripcion
-        -- Unimos la tabla consigo misma para encontrar la fila que tiene la fecha del final.
-        -- La condición es que sea EL MISMO CURSO (usamos la clave compuesta que ya conocemos).
-        JOIN
-    gd_esquema.Maestra AS m_fecha_final
-    ON TRIM(m_inscripcion.Sede_Nombre) = TRIM(m_fecha_final.Sede_Nombre)
-        AND TRIM(m_inscripcion.Profesor_Dni) = TRIM(m_fecha_final.Profesor_Dni)
-        AND TRIM(m_inscripcion.Curso_Nombre) = TRIM(m_fecha_final.Curso_Nombre)
-        AND CAST(m_inscripcion.Curso_FechaInicio AS DATE) = CAST(m_fecha_final.Curso_FechaInicio AS DATE)
-        -- Ahora que tenemos las dos filas (la de la nota y la de la fecha), hacemos los JOINs para buscar los IDs.
-        JOIN LOS_DESNORMALIZADOS.alumno a ON a.legajo = m_inscripcion.Alumno_Legajo
-        JOIN LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m_inscripcion.Profesor_Dni)
-        JOIN LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m_inscripcion.Sede_Nombre) AND ISNULL(s.provincia, '') = ISNULL(TRIM(m_inscripcion.Sede_Provincia), '') AND ISNULL(s.localidad, '') = ISNULL(TRIM(m_inscripcion.Sede_Localidad), '')
-        JOIN LOS_DESNORMALIZADOS.curso c ON c.sede_id = s.id AND c.profesor_id = p.id AND c.nombre = TRIM(m_inscripcion.Curso_Nombre) AND CAST(c.fecha_inicio AS DATE) = CAST(m_inscripcion.Curso_FechaInicio AS DATE)
-        -- Y el JOIN clave para encontrar el final, usando la fecha de la segunda tabla (m_fecha_final)
-        JOIN LOS_DESNORMALIZADOS.final f ON f.curso_id = c.codigo_curso AND CAST(f.fecha AS DATE) = CAST(m_fecha_final.Examen_Final_Fecha AS DATE)
+    a.legajo                                   AS alumno_id,
+    p.id                                       AS profesor_id,
+    CASE
+        WHEN UPPER(LTRIM(RTRIM(COALESCE(m_inscripcion.Evaluacion_Final_Presente, ''))))
+            IN ('S','SI','Y','1','TRUE') THEN 1
+        ELSE 0
+        END                                        AS presente,
+    TRY_CAST(m_inscripcion.Evaluacion_Final_Nota AS DECIMAL(5,2)) AS nota,
+    f.id                                       AS final_id,
+    m_inscripcion.Inscripcion_Final_Fecha      AS fecha_inscripcion
+FROM gd_esquema.Maestra AS m_inscripcion
+         JOIN gd_esquema.Maestra AS m_fecha_final
+              ON TRIM(m_inscripcion.Sede_Nombre)       = TRIM(m_fecha_final.Sede_Nombre)
+                  AND TRIM(m_inscripcion.Profesor_Dni)      = TRIM(m_fecha_final.Profesor_Dni)
+                  AND TRIM(m_inscripcion.Curso_Nombre)      = TRIM(m_fecha_final.Curso_Nombre)
+                  AND CAST(m_inscripcion.Curso_FechaInicio AS DATE) = CAST(m_fecha_final.Curso_FechaInicio AS DATE)
+                  -- 💡 Clave para que sea el MISMO final:
+                  AND m_inscripcion.Inscripcion_Final_Nro = m_fecha_final.Inscripcion_Final_Nro
+    -- Si no tuvieras ese nro, podés reemplazar por:
+    -- AND CAST(m_inscripcion.Examen_Final_Fecha AS DATE) = CAST(m_fecha_final.Examen_Final_Fecha AS DATE)
+         JOIN LOS_DESNORMALIZADOS.alumno a
+              ON a.legajo = m_inscripcion.Alumno_Legajo
+         JOIN LOS_DESNORMALIZADOS.profesor p
+              ON p.dni = TRIM(m_inscripcion.Profesor_Dni)
+         JOIN LOS_DESNORMALIZADOS.sede s
+              ON s.nombre = TRIM(m_inscripcion.Sede_Nombre)
+                  AND ISNULL(s.provincia, '') = ISNULL(TRIM(m_inscripcion.Sede_Provincia), '')
+                  AND ISNULL(s.localidad, '') = ISNULL(TRIM(m_inscripcion.Sede_Localidad), '')
+         JOIN LOS_DESNORMALIZADOS.curso c
+              ON c.sede_id = s.id
+                  AND c.profesor_id = p.id
+                  AND c.nombre = TRIM(m_inscripcion.Curso_Nombre)
+                  AND CAST(c.fecha_inicio AS DATE) = CAST(m_inscripcion.Curso_FechaInicio AS DATE)
+         JOIN LOS_DESNORMALIZADOS.final f
+              ON f.curso_id = c.codigo_curso
+                  AND CAST(f.fecha AS DATE) = CAST(m_fecha_final.Examen_Final_Fecha AS DATE)
 WHERE
-  -- Nos aseguramos de que la fila de inscripción sea válida...
-    m_inscripcion.Inscripcion_Final_Nro IS NOT NULL
-  AND m_inscripcion.Evaluacion_Final_Nota IS NOT NULL
-  -- ...y que la fila del final también lo sea.
-  AND m_fecha_final.Examen_Final_Fecha IS NOT NULL
+    m_inscripcion.Inscripcion_Final_Nro   IS NOT NULL
+  AND m_inscripcion.Evaluacion_Final_Nota   IS NOT NULL
+  AND m_fecha_final.Examen_Final_Fecha      IS NOT NULL
   AND NOT EXISTS (
-    SELECT 1 FROM LOS_DESNORMALIZADOS.final_inscripto fi
-    WHERE fi.alumno_id = a.legajo AND fi.final_id = f.id
+    SELECT 1
+    FROM LOS_DESNORMALIZADOS.final_inscripto fi
+    WHERE fi.alumno_id = a.legajo
+      AND fi.final_id  = f.id
+);
+
+END;
+GO
+
+-- NO FUNCIONA LA PARTE B
+
+------------------------------------------------------
+-- 15) Migrar Medios de Pago
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_medios_pago
+    AS
+BEGIN
+  SET NOCOUNT ON;
+
+INSERT INTO LOS_DESNORMALIZADOS.medio_de_pago (nombre)
+SELECT DISTINCT
+    TRIM(m.Pago_MedioPago)
+FROM gd_esquema.Maestra m
+WHERE m.Pago_MedioPago IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM LOS_DESNORMALIZADOS.medio_de_pago mp
+    WHERE TRIM(mp.nombre) = TRIM(m.Pago_MedioPago)
 );
 END;
 GO
 
--- NO FUNCIONA LA SEGUNDA PARTE
+------------------------------------------------------
+-- 15) Migrar Facturas
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_facturas
+    AS
+BEGIN
+  SET NOCOUNT ON;
+
+INSERT INTO LOS_DESNORMALIZADOS.factura
+(nro_factura, fecha_emision, fecha_vencimiento, alumno_id, importe_total)
+SELECT DISTINCT
+    m.Factura_Numero,
+    CAST(m.Factura_FechaEmision AS DATE),
+    CAST(m.Factura_FechaVencimiento AS DATE),
+    a.legajo,
+    TRY_CAST(m.Factura_Total AS DECIMAL(12,2))
+FROM gd_esquema.Maestra m
+         JOIN LOS_DESNORMALIZADOS.alumno a
+              ON a.legajo = m.Alumno_Legajo
+WHERE m.Factura_Numero IS NOT NULL
+  AND m.Factura_FechaEmision  IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM LOS_DESNORMALIZADOS.factura f
+    WHERE f.nro_factura = m.Factura_Numero
+      AND CAST(f.fecha_emision AS DATE) = CAST(m.Factura_FechaEmision AS DATE)
+      AND f.alumno_id = a.legajo
+);
+END;
+GO
+
+------------------------------------------------------
+-- 15) Migrar Pagos
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_pagos
+    AS
+BEGIN
+  SET NOCOUNT ON;
+
+INSERT INTO LOS_DESNORMALIZADOS.pago
+(factura_id, fecha, importe, medio_pago_id)
+SELECT DISTINCT
+    f.nro_factura,
+    CAST(m.Pago_Fecha AS DATE),
+    TRY_CAST(m.Pago_Importe AS DECIMAL(12,2)),
+    mp.id
+FROM gd_esquema.Maestra m
+         JOIN LOS_DESNORMALIZADOS.medio_de_pago mp
+              ON TRIM(mp.nombre) = TRIM(m.Pago_MedioPago)
+    -- localizar la factura por (numero + fecha + alumno + curso)
+         JOIN LOS_DESNORMALIZADOS.alumno a
+              ON a.legajo = m.Alumno_Legajo
+         JOIN LOS_DESNORMALIZADOS.factura f
+              ON f.nro_factura   = m.Factura_Numero
+                  AND CAST(f.fecha_emision AS DATE) = CAST(m.Factura_FechaEmision AS DATE)
+                  AND f.alumno_id = a.legajo
+WHERE m.Pago_Fecha IS NOT NULL
+  AND m.Pago_Importe IS NOT NULL
+  AND NOT EXISTS (
+    SELECT 1
+    FROM LOS_DESNORMALIZADOS.pago pg
+    WHERE pg.factura_id = f.nro_factura
+      AND pg.medio_pago_id = mp.id
+      AND CAST(pg.fecha AS DATE) = CAST(m.Pago_Fecha AS DATE)
+      AND pg.importe = TRY_CAST(m.Pago_Importe AS DECIMAL(12,2))
+);
+END;
+GO
+
+
+
 EXEC LOS_DESNORMALIZADOS.migrar_instituciones
 EXEC LOS_DESNORMALIZADOS.migrar_sedes
 EXEC LOS_DESNORMALIZADOS.migrar_profesores
@@ -1013,10 +1120,12 @@ EXEC LOS_DESNORMALIZADOS.migrar_turnos
 EXEC LOS_DESNORMALIZADOS.migrar_dias
 EXEC LOS_DESNORMALIZADOS.migrar_cursos
 EXEC LOS_DESNORMALIZADOS.migrar_modulos
---EXEC LOS_DESNORMALIZADOS.migrar_horarios
---EXEC LOS_DESNORMALIZADOS.migrar_estados_inscripcion
---EXEC LOS_DESNORMALIZADOS.migrar_inscripciones_curso
---EXEC LOS_DESNORMALIZADOS.migrar_trabajos_practicos
---EXEC LOS_DESNORMALIZADOS.migrar_evaluaciones_modulos
---EXEC LOS_DESNORMALIZADOS.migrar_finales
-
+EXEC LOS_DESNORMALIZADOS.migrar_horarios
+EXEC LOS_DESNORMALIZADOS.migrar_estados_inscripcion
+EXEC LOS_DESNORMALIZADOS.migrar_inscripciones_curso
+EXEC LOS_DESNORMALIZADOS.migrar_trabajos_practicos
+EXEC LOS_DESNORMALIZADOS.migrar_evaluaciones_modulos
+EXEC LOS_DESNORMALIZADOS.migrar_finales
+EXEC LOS_DESNORMALIZADOS.migrar_medios_pago
+EXEC LOS_DESNORMALIZADOS.migrar_facturas
+EXEC LOS_DESNORMALIZADOS.migrar_pagos

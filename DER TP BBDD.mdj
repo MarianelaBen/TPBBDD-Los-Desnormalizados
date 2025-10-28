@@ -4147,19 +4147,6 @@
 						},
 						{
 							"_type": "UMLNoteView",
-							"_id": "AAAAAAGZhxZwKzeNMqA=",
-							"_parent": {
-								"$ref": "AAAAAAGZTZcs9+d5qL4="
-							},
-							"font": "Arial;13;0",
-							"left": 1416,
-							"top": 872,
-							"width": 113,
-							"height": 103,
-							"text": "se combinaron las tablas inscripcion_final y final_tomado"
-						},
-						{
-							"_type": "UMLNoteView",
 							"_id": "AAAAAAGZhx7svTfrL7w=",
 							"_parent": {
 								"$ref": "AAAAAAGZTZcs9+d5qL4="
@@ -5009,22 +4996,6 @@
 							},
 							"lineStyle": 1,
 							"points": "883:1379;940:1447"
-						},
-						{
-							"_type": "UMLNoteLinkView",
-							"_id": "AAAAAAGZhzpKijqB8Hw=",
-							"_parent": {
-								"$ref": "AAAAAAGZTZcs9+d5qL4="
-							},
-							"font": "Arial;13;0",
-							"head": {
-								"$ref": "AAAAAAGZhxZwKzeNMqA="
-							},
-							"tail": {
-								"$ref": "AAAAAAGZZ/fb4GBwCeA="
-							},
-							"lineStyle": 1,
-							"points": "1479:856;1477:871"
 						},
 						{
 							"_type": "UMLNoteLinkView",
