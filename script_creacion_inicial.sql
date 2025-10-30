@@ -597,7 +597,6 @@ SELECT DISTINCT
     m.Curso_PrecioMensual
 FROM
     gd_esquema.Maestra m
-        -- Unimos con las tablas ya migradas para obtener los IDs
         JOIN
     LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre)
         AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '')
@@ -607,8 +606,8 @@ FROM
         LEFT JOIN -- Usamos LEFT JOIN por si alguna categoría es NULL
         LOS_DESNORMALIZADOS.categoria cat ON cat.nombre = TRIM(m.Curso_Categoria)
 WHERE
-    m.Curso_Codigo IS NOT NULL -- Nos aseguramos de que el curso tenga un código
-  AND NOT EXISTS ( -- Condición para no insertar duplicados
+    m.Curso_Codigo IS NOT NULL
+  AND NOT EXISTS (
     SELECT 1
     FROM LOS_DESNORMALIZADOS.curso c
     WHERE c.nombre = TRIM(m.Curso_Nombre)
@@ -662,18 +661,15 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_horarios
 BEGIN
 	SET NOCOUNT ON;
 
-	-- Paso 1: Migrar la relación Curso-Turno a la tabla horario_curso
 INSERT INTO LOS_DESNORMALIZADOS.horario_curso (curso_id, turno_id)
 SELECT DISTINCT
     c.codigo_curso,
     t.id
 FROM
     gd_esquema.Maestra m
-        -- Identificamos el curso
         JOIN LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre) AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '') AND ISNULL(s.localidad, '') = ISNULL(TRIM(m.Sede_Localidad), '')
         JOIN LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m.Profesor_Dni)
         JOIN LOS_DESNORMALIZADOS.curso c ON c.sede_id = s.id AND c.profesor_id = p.id AND c.nombre = TRIM(m.Curso_Nombre) AND c.fecha_inicio = m.Curso_FechaInicio
-        -- Identificamos el turno
         JOIN LOS_DESNORMALIZADOS.turno t ON t.nombre = TRIM(m.Curso_Turno)
 WHERE
     m.Curso_Turno IS NOT NULL
@@ -683,22 +679,17 @@ WHERE
     WHERE hc.curso_id = c.codigo_curso AND hc.turno_id = t.id
 );
 
--- Paso 2: Migrar la relación Horario-Día a la tabla horario_curso_dia
 INSERT INTO LOS_DESNORMALIZADOS.horario_curso_dia (horario_curso_id, dia_id)
 SELECT DISTINCT
     hc.id,
     d.id
 FROM
     gd_esquema.Maestra m
-        -- Volvemos a identificar el curso para llegar al horario
         JOIN LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre) AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '') AND ISNULL(s.localidad, '') = ISNULL(TRIM(m.Sede_Localidad), '')
         JOIN LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m.Profesor_Dni)
         JOIN LOS_DESNORMALIZADOS.curso c ON c.sede_id = s.id AND c.profesor_id = p.id AND c.nombre = TRIM(m.Curso_Nombre) AND c.fecha_inicio = m.Curso_FechaInicio
-        -- Identificamos el turno
         JOIN LOS_DESNORMALIZADOS.turno t ON t.nombre = TRIM(m.Curso_Turno)
-        -- Identificamos el día
         JOIN LOS_DESNORMALIZADOS.dia d ON d.nombre = REPLACE(TRIM(m.Curso_Dia), 'Miercoles', 'Miércoles')
-        -- Usamos los datos anteriores para encontrar el ID del horario que acabamos de crear
         JOIN LOS_DESNORMALIZADOS.horario_curso hc ON hc.curso_id = c.codigo_curso AND hc.turno_id = t.id
 WHERE
     m.Curso_Dia IS NOT NULL
@@ -757,13 +748,10 @@ SELECT DISTINCT
     m.Inscripcion_FechaRespuesta
 FROM
     gd_esquema.Maestra m
-        -- Identificamos al alumno por su legajo
         JOIN
     LOS_DESNORMALIZADOS.alumno a ON a.legajo = m.Alumno_Legajo
-        -- Identificamos el estado de la inscripción
         JOIN
     LOS_DESNORMALIZADOS.estado_inscripcion ei ON ei.nombre = TRIM(m.Inscripcion_Estado)
-        -- Identificamos el curso (usando la misma lógica de siempre)
         JOIN
     LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre)
         AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '')
@@ -776,8 +764,8 @@ FROM
         AND c.nombre = TRIM(m.Curso_Nombre)
         AND c.fecha_inicio = m.Curso_FechaInicio
 WHERE
-    m.Inscripcion_Numero IS NOT NULL -- Aseguramos que sea una fila con datos de inscripción
-  AND NOT EXISTS ( -- Condición para no insertar duplicados
+    m.Inscripcion_Numero IS NOT NULL
+  AND NOT EXISTS (
     SELECT 1
     FROM LOS_DESNORMALIZADOS.inscripcion_curso ic
     WHERE ic.alumno_id = a.legajo AND ic.curso_id = c.codigo_curso
@@ -807,10 +795,8 @@ SELECT DISTINCT
     m.Trabajo_Practico_Nota
 FROM
     gd_esquema.Maestra m
-        -- Identificamos al alumno
         JOIN
     LOS_DESNORMALIZADOS.alumno a ON a.legajo = m.Alumno_Legajo
-        -- Identificamos el curso (con la lógica que ya dominamos)
         JOIN
     LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre)
         AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '')
@@ -823,9 +809,9 @@ FROM
         AND c.nombre = TRIM(m.Curso_Nombre)
         AND c.fecha_inicio = m.Curso_FechaInicio
 WHERE
-    m.Trabajo_Practico_Nota IS NOT NULL -- Solo filas que tengan datos de un TP
+    m.Trabajo_Practico_Nota IS NOT NULL
   AND m.Trabajo_Practico_FechaEvaluacion IS NOT NULL
-  AND NOT EXISTS ( -- Evitamos duplicados
+  AND NOT EXISTS (
     SELECT 1
     FROM LOS_DESNORMALIZADOS.trabajo_practico tp
     WHERE tp.alumno_id = a.legajo
@@ -844,18 +830,15 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_evaluaciones_modulos
 BEGIN
 	SET NOCOUNT ON;
 
-	-- Paso A: Migrar las evaluaciones (el "evento" de examen para un módulo)
 INSERT INTO LOS_DESNORMALIZADOS.evaluacion (fecha_evaluacion, modulo_id)
 SELECT DISTINCT
     m.Evaluacion_Curso_fechaEvaluacion,
     mo.id
 FROM
     gd_esquema.Maestra m
-        -- Identificamos el curso para poder llegar al módulo
         JOIN LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre) AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '') AND ISNULL(s.localidad, '') = ISNULL(TRIM(m.Sede_Localidad), '')
         JOIN LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m.Profesor_Dni)
         JOIN LOS_DESNORMALIZADOS.curso c ON c.sede_id = s.id AND c.profesor_id = p.id AND c.nombre = TRIM(m.Curso_Nombre) AND c.fecha_inicio = m.Curso_FechaInicio
-        -- Identificamos el módulo
         JOIN
     LOS_DESNORMALIZADOS.modulo mo ON mo.curso_id = c.codigo_curso AND mo.nombre = TRIM(m.Modulo_Nombre)
 WHERE
@@ -866,24 +849,21 @@ WHERE
     WHERE e.modulo_id = mo.id AND e.fecha_evaluacion = m.Evaluacion_Curso_fechaEvaluacion
 );
 
--- Paso B: Migrar los resultados de los alumnos en esas evaluaciones
+
 INSERT INTO LOS_DESNORMALIZADOS.alumno_evaluado (legajo_alumno, nota, presente, instancia, evaluacion_id)
 SELECT DISTINCT
     a.legajo,
     m.Evaluacion_Curso_Nota,
     m.Evaluacion_Curso_Presente,
     m.Evaluacion_Curso_Instancia,
-    e.id -- El ID de la evaluación que creamos en el paso A
+    e.id
 FROM
     gd_esquema.Maestra m
-        -- Identificamos al alumno
         JOIN LOS_DESNORMALIZADOS.alumno a ON a.legajo = m.Alumno_Legajo
-        -- Identificamos nuevamente el curso y el módulo para poder encontrar la evaluación
         JOIN LOS_DESNORMALIZADOS.sede s ON s.nombre = TRIM(m.Sede_Nombre) AND ISNULL(s.provincia, '') = ISNULL(TRIM(m.Sede_Provincia), '') AND ISNULL(s.localidad, '') = ISNULL(TRIM(m.Sede_Localidad), '')
         JOIN LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m.Profesor_Dni)
         JOIN LOS_DESNORMALIZADOS.curso c ON c.sede_id = s.id AND c.profesor_id = p.id AND c.nombre = TRIM(m.Curso_Nombre) AND c.fecha_inicio = m.Curso_FechaInicio
         JOIN LOS_DESNORMALIZADOS.modulo mo ON mo.curso_id = c.codigo_curso AND mo.nombre = TRIM(m.Modulo_Nombre)
-        -- Este es el JOIN clave: vinculamos todo con la evaluación ya creada
         JOIN
     LOS_DESNORMALIZADOS.evaluacion e ON e.modulo_id = mo.id AND e.fecha_evaluacion = m.Evaluacion_Curso_fechaEvaluacion
 WHERE
@@ -904,7 +884,6 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_finales
 BEGIN
 	SET NOCOUNT ON;
 
-	-- Paso A: Crear los registros de los exámenes finales (Esta parte ya funciona bien)
 INSERT INTO LOS_DESNORMALIZADOS.final (fecha, hora, curso_id, descripcion)
 SELECT DISTINCT m.Examen_Final_Fecha, m.Examen_Final_Hora, c.codigo_curso, m.Examen_Final_Descripcion
 FROM gd_esquema.Maestra m
@@ -963,9 +942,7 @@ FROM
         JOIN LOS_DESNORMALIZADOS.curso c ON c.codigo_curso = m.Curso_Codigo
         JOIN LOS_DESNORMALIZADOS.final f ON f.curso_id = c.codigo_curso AND CAST(f.fecha AS DATE) = CAST(m.Examen_Final_Fecha AS DATE)
 WHERE
-  -- Nos aseguramos de que sea una fila con datos de inscripción a final
     m.Inscripcion_Final_Nro IS NOT NULL
-  -- Condición para no insertar duplicados
   AND NOT EXISTS (
     SELECT 1
     FROM LOS_DESNORMALIZADOS.final_inscripto fi
@@ -1033,7 +1010,6 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_pagos
 BEGIN
   SET NOCOUNT ON;
 
-  -- Solo pagos válidos
 WITH pagos_validos AS (
     SELECT
         m.Factura_Numero,
@@ -1087,7 +1063,6 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_detalle_factura
 BEGIN
     SET NOCOUNT ON;
 
-    -- Opcional: deshabilitar trigger para acelerar carga masiva
     IF @fast_mode = 1
         DISABLE TRIGGER LOS_DESNORMALIZADOS.trg_actualizar_importe_factura
         ON LOS_DESNORMALIZADOS.detalle_factura;
@@ -1109,7 +1084,6 @@ FROM gd_esquema.Maestra m
                   AND f.alumno_id = a.legajo
          JOIN LOS_DESNORMALIZADOS.curso c
               ON c.codigo_curso = m.Curso_Codigo
-    -- Anti-join para evitar duplicados
          LEFT JOIN LOS_DESNORMALIZADOS.detalle_factura d
                    ON d.factura_id = f.nro_factura
                        AND d.curso_id   = c.codigo_curso
@@ -1126,7 +1100,6 @@ WHERE
   AND m.Detalle_Factura_Importe IS NOT NULL
   AND d.id IS NULL;
 
--- Recalcular importes de facturas en un solo paso si deshabilitaste el trigger
 IF @fast_mode = 1
 BEGIN
 UPDATE f
@@ -1165,8 +1138,6 @@ FROM
     gd_esquema.Maestra m
         JOIN LOS_DESNORMALIZADOS.curso c ON m.Curso_Codigo = c.codigo_curso
 WHERE
-  -- La condición clave: solo creamos la plantilla si hay una fecha
-  -- y al menos una de las preguntas tiene contenido.
     m.Encuesta_FechaRegistro IS NOT NULL
   AND (
     m.Encuesta_Pregunta1 IS NOT NULL OR
@@ -1175,7 +1146,6 @@ WHERE
     m.Encuesta_Pregunta4 IS NOT NULL
     )
   AND
-  -- Condición para no insertar plantillas duplicadas si se corre el script varias veces.
     NOT EXISTS (
         SELECT 1
         FROM LOS_DESNORMALIZADOS.encuesta e
@@ -1223,7 +1193,7 @@ WITH
             ROW_NUMBER() OVER (
                 PARTITION BY Alumno_Legajo, Curso_Codigo, CAST(Encuesta_FechaRegistro AS DATE)
                 ORDER BY Encuesta_FechaRegistro
-            ) as rn -- Esta es una columna adicional que añade un valor único por conjunto de respuesta con misma fecha y curso, útil para identificar un conjunto de respuestas 
+            ) as rn
         FROM
             Maestra_Filtrada
     ),
@@ -1235,7 +1205,7 @@ WITH
             ROW_NUMBER() OVER (
                 PARTITION BY curso_id, fecha_registro
                 ORDER BY fecha_registro
-            ) as rn -- Esta es una columna adicional que añade un valor único por encuesta con misma fecha y curso, útil para asociarla con un único conjunto de respuestas con el mismo rn
+            ) as rn
         FROM
             LOS_DESNORMALIZADOS.encuesta
     )
@@ -1254,7 +1224,7 @@ FROM
         JOIN EncuestasUnicas e
              ON e.curso_id = m.Curso_Codigo
                  AND e.fecha_registro = m.fecha_registro_canonica
-                 AND e.rn = m.rn -- Así me aseguro de que la asociación se haga correctamente una con una incluso con encuestas con mismo código curso y fecha
+                 AND e.rn = m.rn
     CROSS APPLY (
         VALUES
             (m.Encuesta_Pregunta1, m.Encuesta_Nota1),
@@ -1263,7 +1233,7 @@ FROM
             (m.Encuesta_Pregunta4, m.Encuesta_Nota4)
     ) AS Detalle(pregunta, respuesta)
 WHERE
-  Detalle.pregunta IS NOT NULL;
+    Detalle.pregunta IS NOT NULL;
 END
 GO
 
@@ -1289,3 +1259,4 @@ EXEC LOS_DESNORMALIZADOS.migrar_pagos;
 EXEC LOS_DESNORMALIZADOS.migrar_detalle_factura;
 EXEC LOS_DESNORMALIZADOS.migrar_encuestas;
 EXEC LOS_DESNORMALIZADOS.migrar_detalle_encuestas;
+
