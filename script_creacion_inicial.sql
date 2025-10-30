@@ -73,7 +73,6 @@ CREATE TABLE LOS_DESNORMALIZADOS.curso(
                                           FOREIGN KEY(sede_id) REFERENCES LOS_DESNORMALIZADOS.sede(id),
                                           FOREIGN KEY(profesor_id) REFERENCES LOS_DESNORMALIZADOS.profesor(id),
                                           FOREIGN KEY(categoria_id) REFERENCES LOS_DESNORMALIZADOS.categoria(id)
-
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.dia(
@@ -112,7 +111,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.final (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.final_inscripto (
-                                                     nro_inscripcion BIGINT PRIMARY KEY IDENTITY(1,1),
+                                                     nro_inscripcion BIGINT PRIMARY KEY,
                                                      alumno_id BIGINT NOT NULL,
                                                      profesor_id BIGINT NOT NULL,
                                                      presente BIT,
@@ -167,37 +166,17 @@ CREATE TABLE LOS_DESNORMALIZADOS.pago (
 CREATE TABLE LOS_DESNORMALIZADOS.encuesta (
                                               id BIGINT IDENTITY PRIMARY KEY,
                                               curso_id BIGINT NOT NULL,
+                                              fecha_registro DATETIME,
+                                              observaciones VARCHAR(255),
                                               FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.curso(codigo_curso)
 );
 
-CREATE TABLE LOS_DESNORMALIZADOS.pregunta_encuesta (
-                                                       id BIGINT IDENTITY PRIMARY KEY,
-                                                       encuesta_id BIGINT NOT NULL,
-                                                       pregunta VARCHAR(255),
-                                                       FOREIGN KEY (encuesta_id) REFERENCES LOS_DESNORMALIZADOS.encuesta(id)
-);
-
-CREATE TABLE LOS_DESNORMALIZADOS.encuesta_anonima (
+CREATE TABLE LOS_DESNORMALIZADOS.detalle_encuesta (
                                                       id BIGINT IDENTITY PRIMARY KEY,
                                                       encuesta_id BIGINT NOT NULL,
-                                                      fecha_registro DATETIME DEFAULT GETDATE(),
-                                                      observaciones VARCHAR(255) NULL,
+                                                      pregunta VARCHAR(255),
+                                                      respuesta BIGINT CHECK(respuesta BETWEEN 1 AND 10),
                                                       FOREIGN KEY (encuesta_id) REFERENCES LOS_DESNORMALIZADOS.encuesta(id)
-);
-
-CREATE TABLE LOS_DESNORMALIZADOS.encuesta_alumno (
-                                                     alumno_id BIGINT NOT NULL,
-                                                     encuesta_id BIGINT NOT NULL,
-                                                     PRIMARY KEY (alumno_id, encuesta_id)
-);
-
-CREATE TABLE LOS_DESNORMALIZADOS.respuesta_encuesta (
-                                                        encuesta_anonima_id BIGINT NOT NULL,
-                                                        pregunta_id BIGINT NOT NULL,
-                                                        respuesta INT,
-                                                        PRIMARY KEY (encuesta_anonima_id, pregunta_id),
-                                                        FOREIGN KEY (encuesta_anonima_id) REFERENCES LOS_DESNORMALIZADOS.encuesta_anonima(id),
-                                                        FOREIGN KEY (pregunta_id) REFERENCES LOS_DESNORMALIZADOS.pregunta_encuesta(id)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.estado_inscripcion(
@@ -333,15 +312,11 @@ CREATE INDEX idx_detalle_factura_anio_mes
 CREATE INDEX idx_pago_factura
     ON LOS_DESNORMALIZADOS.pago (factura_id);
 
--- encuesta_alumno
-CREATE INDEX idx_encuesta_alumno_alumno
-    ON LOS_DESNORMALIZADOS.encuesta_alumno (alumno_id);
-
-CREATE INDEX idx_encuesta_alumno_encuesta
-    ON LOS_DESNORMALIZADOS.encuesta_alumno (encuesta_id);
 
 CREATE INDEX idx_detalle_unicidad
     ON LOS_DESNORMALIZADOS.detalle_factura (factura_id, curso_id, anio, mes, importe);
+
+
 
 ------------------------------------------------------
 -- FIN DE ÍNDICES
@@ -924,7 +899,6 @@ GO
 ------------------------------------------------------
 -- 14) Migrar Finales
 ------------------------------------------------------
-
 CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_finales
     AS
 BEGIN
@@ -940,64 +914,67 @@ FROM gd_esquema.Maestra m
 WHERE m.Examen_Final_Fecha IS NOT NULL
   AND NOT EXISTS (SELECT 1 FROM LOS_DESNORMALIZADOS.final f WHERE f.curso_id = c.codigo_curso AND CAST(f.fecha AS DATE) = CAST(m.Examen_Final_Fecha AS DATE));
 
--- Paso B: Inscribir a los alumnos en los finales y cargar sus notas
-INSERT INTO LOS_DESNORMALIZADOS.final_inscripto
-(alumno_id, profesor_id, presente, nota, final_id, fecha_inscripcion)
+END
+GO
+------------------------------------------------------
+-- 15) Migrar Inscripcion Finales
+------------------------------------------------------
+
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_inscripcion_finales
+    AS
+BEGIN
+    SET NOCOUNT ON;
+
+INSERT INTO LOS_DESNORMALIZADOS.final_inscripto (
+    nro_inscripcion,
+    alumno_id,
+    profesor_id,
+    presente,
+    nota,
+    final_id,
+    fecha_inscripcion
+)
 SELECT DISTINCT
-    a.legajo                                   AS alumno_id,
-    p.id                                       AS profesor_id,
-    CASE
-        WHEN UPPER(LTRIM(RTRIM(COALESCE(m_inscripcion.Evaluacion_Final_Presente, ''))))
-            IN ('S','SI','Y','1','TRUE') THEN 1
-        ELSE 0
-        END                                        AS presente,
-    TRY_CAST(m_inscripcion.Evaluacion_Final_Nota AS DECIMAL(5,2)) AS nota,
-    f.id                                       AS final_id,
-    m_inscripcion.Inscripcion_Final_Fecha      AS fecha_inscripcion
-FROM gd_esquema.Maestra AS m_inscripcion
-         JOIN gd_esquema.Maestra AS m_fecha_final
-              ON TRIM(m_inscripcion.Sede_Nombre)       = TRIM(m_fecha_final.Sede_Nombre)
-                  AND TRIM(m_inscripcion.Profesor_Dni)      = TRIM(m_fecha_final.Profesor_Dni)
-                  AND TRIM(m_inscripcion.Curso_Nombre)      = TRIM(m_fecha_final.Curso_Nombre)
-                  AND CAST(m_inscripcion.Curso_FechaInicio AS DATE) = CAST(m_fecha_final.Curso_FechaInicio AS DATE)
-                  -- 💡 Clave para que sea el MISMO final:
-                  AND m_inscripcion.Inscripcion_Final_Nro = m_fecha_final.Inscripcion_Final_Nro
-    -- Si no tuvieras ese nro, podés reemplazar por:
-    -- AND CAST(m_inscripcion.Examen_Final_Fecha AS DATE) = CAST(m_fecha_final.Examen_Final_Fecha AS DATE)
-         JOIN LOS_DESNORMALIZADOS.alumno a
-              ON a.legajo = m_inscripcion.Alumno_Legajo
-         JOIN LOS_DESNORMALIZADOS.profesor p
-              ON p.dni = TRIM(m_inscripcion.Profesor_Dni)
-         JOIN LOS_DESNORMALIZADOS.sede s
-              ON s.nombre = TRIM(m_inscripcion.Sede_Nombre)
-                  AND ISNULL(s.provincia, '') = ISNULL(TRIM(m_inscripcion.Sede_Provincia), '')
-                  AND ISNULL(s.localidad, '') = ISNULL(TRIM(m_inscripcion.Sede_Localidad), '')
-         JOIN LOS_DESNORMALIZADOS.curso c
-              ON c.sede_id = s.id
-                  AND c.profesor_id = p.id
-                  AND c.nombre = TRIM(m_inscripcion.Curso_Nombre)
-                  AND CAST(c.fecha_inicio AS DATE) = CAST(m_inscripcion.Curso_FechaInicio AS DATE)
-         JOIN LOS_DESNORMALIZADOS.final f
-              ON f.curso_id = c.codigo_curso
-                  AND CAST(f.fecha AS DATE) = CAST(m_fecha_final.Examen_Final_Fecha AS DATE)
+    m.Inscripcion_Final_Nro,
+    a.legajo,
+    p.id,
+    (
+        SELECT TOP 1 m_eval.Evaluacion_Final_Presente
+        FROM gd_esquema.Maestra m_eval
+        WHERE m_eval.Alumno_Legajo = m.Alumno_Legajo
+          AND m_eval.Curso_Codigo = m.Curso_Codigo
+          AND CAST(m_eval.Examen_Final_Fecha AS DATE) = CAST(m.Examen_Final_Fecha AS DATE)
+          AND m_eval.Evaluacion_Final_Presente IS NOT NULL
+    ) AS presente,
+    (
+        SELECT TOP 1 m_eval.Evaluacion_Final_Nota
+        FROM gd_esquema.Maestra m_eval
+        WHERE m_eval.Alumno_Legajo = m.Alumno_Legajo
+          AND m_eval.Curso_Codigo = m.Curso_Codigo
+          AND CAST(m_eval.Examen_Final_Fecha AS DATE) = CAST(m.Examen_Final_Fecha AS DATE)
+          AND m_eval.Evaluacion_Final_Nota IS NOT NULL
+    ) AS nota,
+    f.id,
+    m.Inscripcion_Final_Fecha
+FROM
+    gd_esquema.Maestra m
+        JOIN LOS_DESNORMALIZADOS.alumno a ON a.legajo = m.Alumno_Legajo
+        JOIN LOS_DESNORMALIZADOS.profesor p ON p.dni = TRIM(m.Profesor_Dni)
+        JOIN LOS_DESNORMALIZADOS.curso c ON c.codigo_curso = m.Curso_Codigo
+        JOIN LOS_DESNORMALIZADOS.final f ON f.curso_id = c.codigo_curso AND CAST(f.fecha AS DATE) = CAST(m.Examen_Final_Fecha AS DATE)
 WHERE
-    m_inscripcion.Inscripcion_Final_Nro   IS NOT NULL
-  AND m_inscripcion.Evaluacion_Final_Nota   IS NOT NULL
-  AND m_fecha_final.Examen_Final_Fecha      IS NOT NULL
+  -- Nos aseguramos de que sea una fila con datos de inscripción a final
+    m.Inscripcion_Final_Nro IS NOT NULL
+  -- Condición para no insertar duplicados
   AND NOT EXISTS (
     SELECT 1
     FROM LOS_DESNORMALIZADOS.final_inscripto fi
-    WHERE fi.alumno_id = a.legajo
-      AND fi.final_id  = f.id
+    WHERE fi.alumno_id = a.legajo AND fi.final_id = f.id
 );
-
 END;
 GO
-
--- NO FUNCIONA LA PARTE B
-
 ------------------------------------------------------
--- 15) Migrar Medios de Pago
+-- 16) Migrar Medios de Pago
 ------------------------------------------------------
 CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_medios_pago
     AS
@@ -1018,7 +995,7 @@ END;
 GO
 
 ------------------------------------------------------
--- 15) Migrar Facturas
+-- 17) Migrar Facturas
 ------------------------------------------------------
 CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_facturas
     AS
@@ -1049,7 +1026,7 @@ END;
 GO
 
 ------------------------------------------------------
--- 15) Migrar Pagos
+-- 18) Migrar Pagos
 ------------------------------------------------------
 CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_pagos
     AS
@@ -1101,7 +1078,7 @@ END;
 GO
 
 ------------------------------------------------------
--- 16) Migrar Detalle Factura
+-- 19) Migrar Detalle Factura
 ------------------------------------------------------
 
 CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_detalle_factura
@@ -1167,6 +1144,50 @@ END
 END
 GO
 
+------------------------------------------------------
+-- 20) Migrar Encuestas
+------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_encuestas
+    AS
+BEGIN
+    SET NOCOUNT ON;
+
+INSERT INTO LOS_DESNORMALIZADOS.encuesta (
+    curso_id,
+    fecha_registro,
+    observaciones
+)
+SELECT
+    m.Curso_Codigo,
+    m.Encuesta_FechaRegistro,
+    m.Encuesta_Observacion
+FROM
+    gd_esquema.Maestra m
+        JOIN LOS_DESNORMALIZADOS.curso c ON m.Curso_Codigo = c.codigo_curso
+WHERE
+  -- La condición clave: solo creamos la plantilla si hay una fecha
+  -- y al menos una de las preguntas tiene contenido.
+    m.Encuesta_FechaRegistro IS NOT NULL
+  AND (
+    m.Encuesta_Pregunta1 IS NOT NULL OR
+    m.Encuesta_Pregunta2 IS NOT NULL OR
+    m.Encuesta_Pregunta3 IS NOT NULL OR
+    m.Encuesta_Pregunta4 IS NOT NULL
+    )
+  AND
+  -- Condición para no insertar plantillas duplicadas si se corre el script varias veces.
+    NOT EXISTS (
+        SELECT 1
+        FROM LOS_DESNORMALIZADOS.encuesta e
+        WHERE e.curso_id = m.Curso_Codigo
+          AND e.fecha_registro = m.Encuesta_FechaRegistro
+    );
+
+END
+GO
+------------------------------------------------------
+-- 20) Migrar Detalles Encuesta
+------------------------------------------------------
 
 EXEC LOS_DESNORMALIZADOS.migrar_instituciones
 EXEC LOS_DESNORMALIZADOS.migrar_sedes
@@ -1183,7 +1204,9 @@ EXEC LOS_DESNORMALIZADOS.migrar_inscripciones_curso
 EXEC LOS_DESNORMALIZADOS.migrar_trabajos_practicos
 EXEC LOS_DESNORMALIZADOS.migrar_evaluaciones_modulos
 EXEC LOS_DESNORMALIZADOS.migrar_finales
+EXEC LOS_DESNORMALIZADOS.migrar_inscripcion_finales
 EXEC LOS_DESNORMALIZADOS.migrar_medios_pago
 EXEC LOS_DESNORMALIZADOS.migrar_facturas
 EXEC LOS_DESNORMALIZADOS.migrar_pagos
 EXEC LOS_DESNORMALIZADOS.migrar_detalle_factura
+EXEC LOS_DESNORMALIZADOS.migrar_encuestas;
