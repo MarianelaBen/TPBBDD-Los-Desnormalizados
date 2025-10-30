@@ -4234,7 +4234,7 @@
 									},
 									"font": "Arial;13;1",
 									"left": 1224,
-									"top": 1181,
+									"top": 1205,
 									"width": 253.666015625,
 									"height": 13,
 									"text": "detalle_encuesta"
@@ -4251,21 +4251,6 @@
 									"subViews": [
 										{
 											"_type": "ERDColumnView",
-											"_id": "AAAAAAGZhzUgBzoWZcw=",
-											"_parent": {
-												"$ref": "AAAAAAGZhyk5tziHJqk="
-											},
-											"model": {
-												"$ref": "AAAAAAGZhzUfxToTM1g="
-											},
-											"font": "Arial;13;0",
-											"left": 1229,
-											"top": 1204,
-											"width": 243.666015625,
-											"height": 13
-										},
-										{
-											"_type": "ERDColumnView",
 											"_id": "AAAAAAGZhylhyjiVOYk=",
 											"_parent": {
 												"$ref": "AAAAAAGZhyk5tziHJqk="
@@ -4275,7 +4260,7 @@
 											},
 											"font": "Arial;13;0",
 											"left": 1229,
-											"top": 1219,
+											"top": 1228,
 											"width": 243.666015625,
 											"height": 13
 										},
@@ -4290,38 +4275,38 @@
 											},
 											"font": "Arial;13;0",
 											"left": 1229,
-											"top": 1234,
+											"top": 1243,
 											"width": 243.666015625,
 											"height": 13
 										},
 										{
 											"_type": "ERDColumnView",
-											"_id": "AAAAAAGaMxKogB0X0is=",
+											"_id": "AAAAAAGaNW4MH7+iJYw=",
 											"_parent": {
 												"$ref": "AAAAAAGZhyk5tziHJqk="
 											},
 											"model": {
-												"$ref": "AAAAAAGaMxKoVh0UQtU="
+												"$ref": "AAAAAAGaNW4L97+fmME="
 											},
 											"font": "Arial;13;0",
 											"left": 1229,
-											"top": 1249,
+											"top": 1258,
 											"width": 243.666015625,
 											"height": 13
 										}
 									],
 									"font": "Arial;13;0",
 									"left": 1224,
-									"top": 1199,
+									"top": 1223,
 									"width": 253.666015625,
-									"height": 68
+									"height": 53
 								}
 							],
 							"font": "Arial;13;0",
 							"left": 1224,
-							"top": 1176,
+							"top": 1200,
 							"width": 253.666015625,
-							"height": 91,
+							"height": 76,
 							"nameLabel": {
 								"$ref": "AAAAAAGZhyk5tziGZ2w="
 							},
@@ -7959,24 +7944,25 @@
 					"columns": [
 						{
 							"_type": "ERDColumn",
-							"_id": "AAAAAAGZhzUfxToTM1g=",
-							"_parent": {
-								"$ref": "AAAAAAGZhyk5tziDj3E="
-							},
-							"name": "id",
-							"type": "BIGINT",
-							"length": 0,
-							"primaryKey": true
-						},
-						{
-							"_type": "ERDColumn",
 							"_id": "AAAAAAGZhylhiziSAg4=",
 							"_parent": {
 								"$ref": "AAAAAAGZhyk5tziDj3E="
 							},
 							"name": "encuesta_id",
+							"tags": [
+								{
+									"_type": "Tag",
+									"_id": "AAAAAAGaNWuxH7+bx4A=",
+									"_parent": {
+										"$ref": "AAAAAAGZhylhiziSAg4="
+									},
+									"name": "Tag1",
+									"kind": "string"
+								}
+							],
 							"type": "BIGINT",
 							"length": 0,
+							"primaryKey": true,
 							"foreignKey": true
 						},
 						{
@@ -7987,11 +7973,12 @@
 							},
 							"name": "pregunta",
 							"type": "VARCHAR",
-							"length": "255"
+							"length": "255",
+							"primaryKey": true
 						},
 						{
 							"_type": "ERDColumn",
-							"_id": "AAAAAAGaMxKoVh0UQtU=",
+							"_id": "AAAAAAGaNW4L97+fmME=",
 							"_parent": {
 								"$ref": "AAAAAAGZhyk5tziDj3E="
 							},
