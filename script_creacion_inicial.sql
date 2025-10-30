@@ -1223,9 +1223,21 @@ WITH
             ROW_NUMBER() OVER (
                 PARTITION BY Alumno_Legajo, Curso_Codigo, CAST(Encuesta_FechaRegistro AS DATE)
                 ORDER BY Encuesta_FechaRegistro
-            ) as rn
+            ) as rn -- Esta es una columna adicional que añade un valor único por conjunto de respuesta con misma fecha y curso, útil para identificar un conjunto de respuestas 
         FROM
             Maestra_Filtrada
+    ),
+    EncuestasUnicas AS (
+        SELECT
+            id,
+            curso_id,
+            fecha_registro,
+            ROW_NUMBER() OVER (
+                PARTITION BY curso_id, fecha_registro
+                ORDER BY fecha_registro
+            ) as rn -- Esta es una columna adicional que añade un valor único por encuesta con misma fecha y curso, útil para asociarla con un único conjunto de respuestas con el mismo rn
+        FROM
+            LOS_DESNORMALIZADOS.encuesta
     )
 
 INSERT INTO LOS_DESNORMALIZADOS.detalle_encuesta (
@@ -1239,9 +1251,10 @@ SELECT
     Detalle.respuesta
 FROM
     RespuestasUnicas m
-        JOIN LOS_DESNORMALIZADOS.encuesta e
+        JOIN EncuestasUnicas e
              ON e.curso_id = m.Curso_Codigo
                  AND e.fecha_registro = m.fecha_registro_canonica
+                 AND e.rn = m.rn -- Así me aseguro de que la asociación se haga correctamente una con una incluso con encuestas con mismo código curso y fecha
     CROSS APPLY (
         VALUES
             (m.Encuesta_Pregunta1, m.Encuesta_Nota1),
@@ -1250,8 +1263,7 @@ FROM
             (m.Encuesta_Pregunta4, m.Encuesta_Nota4)
     ) AS Detalle(pregunta, respuesta)
 WHERE
-    m.rn = 1
-  AND Detalle.pregunta IS NOT NULL;
+  Detalle.pregunta IS NOT NULL;
 END
 GO
 
