@@ -1186,27 +1186,90 @@ WHERE
 END
 GO
 ------------------------------------------------------
--- 20) Migrar Detalles Encuesta
+-- 21) Migrar Detalles Encuesta
 ------------------------------------------------------
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_detalle_encuestas
+    AS
+BEGIN
+    SET NOCOUNT ON;
+WITH
 
-EXEC LOS_DESNORMALIZADOS.migrar_instituciones
-EXEC LOS_DESNORMALIZADOS.migrar_sedes
-EXEC LOS_DESNORMALIZADOS.migrar_profesores
-EXEC LOS_DESNORMALIZADOS.migrar_alumnos
-EXEC LOS_DESNORMALIZADOS.migrar_categorias
-EXEC LOS_DESNORMALIZADOS.migrar_turnos
-EXEC LOS_DESNORMALIZADOS.migrar_dias
-EXEC LOS_DESNORMALIZADOS.migrar_cursos
-EXEC LOS_DESNORMALIZADOS.migrar_modulos
-EXEC LOS_DESNORMALIZADOS.migrar_horarios
-EXEC LOS_DESNORMALIZADOS.migrar_estados_inscripcion
-EXEC LOS_DESNORMALIZADOS.migrar_inscripciones_curso
-EXEC LOS_DESNORMALIZADOS.migrar_trabajos_practicos
-EXEC LOS_DESNORMALIZADOS.migrar_evaluaciones_modulos
-EXEC LOS_DESNORMALIZADOS.migrar_finales
-EXEC LOS_DESNORMALIZADOS.migrar_inscripcion_finales
-EXEC LOS_DESNORMALIZADOS.migrar_medios_pago
-EXEC LOS_DESNORMALIZADOS.migrar_facturas
-EXEC LOS_DESNORMALIZADOS.migrar_pagos
-EXEC LOS_DESNORMALIZADOS.migrar_detalle_factura
+    Maestra_Filtrada AS (
+        SELECT
+            Alumno_Legajo,
+            Curso_Codigo,
+            Encuesta_FechaRegistro,
+            Encuesta_Pregunta1, Encuesta_Nota1,
+            Encuesta_Pregunta2, Encuesta_Nota2,
+            Encuesta_Pregunta3, Encuesta_Nota3,
+            Encuesta_Pregunta4, Encuesta_Nota4
+        FROM
+            gd_esquema.Maestra
+        WHERE
+            Encuesta_FechaRegistro IS NOT NULL
+          AND (
+            Encuesta_Pregunta1 IS NOT NULL OR
+            Encuesta_Pregunta2 IS NOT NULL OR
+            Encuesta_Pregunta3 IS NOT NULL OR
+            Encuesta_Pregunta4 IS NOT NULL
+            )
+    ),
+    RespuestasUnicas AS (
+        SELECT
+            *, -- Traemos todas las columnas de la tabla filtrada
+            ROW_NUMBER() OVER (
+                PARTITION BY Alumno_Legajo, Curso_Codigo, CAST(Encuesta_FechaRegistro AS DATE)
+                ORDER BY Encuesta_FechaRegistro -- Orden irrelevante, solo para sintaxis
+            ) as rn
+        FROM
+            Maestra_Filtrada -- Leemos del resultado del PASO 1
+    )
+INSERT INTO LOS_DESNORMALIZADOS.detalle_encuesta (
+        encuesta_id,
+        pregunta,
+        respuesta
+    )
+SELECT
+    e.id,
+    Detalle.pregunta,
+    Detalle.respuesta
+FROM
+    RespuestasUnicas m
+        JOIN LOS_DESNORMALIZADOS.encuesta e
+             ON e.curso_id = m.Curso_Codigo
+                 AND CAST(e.fecha_registro AS DATE) = CAST(m.Encuesta_FechaRegistro AS DATE)
+    CROSS APPLY (
+        VALUES
+            (m.Encuesta_Pregunta1, m.Encuesta_Nota1),
+            (m.Encuesta_Pregunta2, m.Encuesta_Nota2),
+            (m.Encuesta_Pregunta3, m.Encuesta_Nota3),
+            (m.Encuesta_Pregunta4, m.Encuesta_Nota4)
+    ) AS Detalle(pregunta, respuesta)
+WHERE
+    m.rn = 1 -- La condición clave: solo migramos la primera aparición de cada encuesta
+  AND Detalle.pregunta IS NOT NULL;
+END
+GO
+
+EXEC LOS_DESNORMALIZADOS.migrar_instituciones;
+EXEC LOS_DESNORMALIZADOS.migrar_sedes;
+EXEC LOS_DESNORMALIZADOS.migrar_profesores;
+EXEC LOS_DESNORMALIZADOS.migrar_alumnos;
+EXEC LOS_DESNORMALIZADOS.migrar_categorias;
+EXEC LOS_DESNORMALIZADOS.migrar_turnos;
+EXEC LOS_DESNORMALIZADOS.migrar_dias;
+EXEC LOS_DESNORMALIZADOS.migrar_cursos;
+EXEC LOS_DESNORMALIZADOS.migrar_modulos;
+EXEC LOS_DESNORMALIZADOS.migrar_horarios;
+EXEC LOS_DESNORMALIZADOS.migrar_estados_inscripcion;
+EXEC LOS_DESNORMALIZADOS.migrar_inscripciones_curso;
+EXEC LOS_DESNORMALIZADOS.migrar_trabajos_practicos;
+EXEC LOS_DESNORMALIZADOS.migrar_evaluaciones_modulos;
+EXEC LOS_DESNORMALIZADOS.migrar_finales;
+EXEC LOS_DESNORMALIZADOS.migrar_inscripcion_finales;
+EXEC LOS_DESNORMALIZADOS.migrar_medios_pago;
+EXEC LOS_DESNORMALIZADOS.migrar_facturas;
+EXEC LOS_DESNORMALIZADOS.migrar_pagos;
+EXEC LOS_DESNORMALIZADOS.migrar_detalle_factura;
 EXEC LOS_DESNORMALIZADOS.migrar_encuestas;
+EXEC LOS_DESNORMALIZADOS.migrar_detalle_encuestas;
