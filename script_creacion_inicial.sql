@@ -172,11 +172,11 @@ CREATE TABLE LOS_DESNORMALIZADOS.encuesta (
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.detalle_encuesta (
-                                                      id BIGINT IDENTITY PRIMARY KEY,
                                                       encuesta_id BIGINT NOT NULL,
-                                                      pregunta VARCHAR(255),
+                                                      pregunta VARCHAR(255) NOT NULL,
                                                       respuesta BIGINT CHECK(respuesta BETWEEN 1 AND 10),
-                                                      FOREIGN KEY (encuesta_id) REFERENCES LOS_DESNORMALIZADOS.encuesta(id)
+                                                      FOREIGN KEY (encuesta_id) REFERENCES LOS_DESNORMALIZADOS.encuesta(id),
+                                                      PRIMARY KEY (encuesta_id, pregunta) -- Clave primaria compuesta
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.estado_inscripcion(
@@ -1192,8 +1192,8 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_detalle_encuestas
     AS
 BEGIN
     SET NOCOUNT ON;
-WITH
 
+WITH
     Maestra_Filtrada AS (
         SELECT
             Alumno_Legajo,
@@ -1216,14 +1216,18 @@ WITH
     ),
     RespuestasUnicas AS (
         SELECT
-            *, -- Traemos todas las columnas de la tabla filtrada
+            *,
+            MIN(Encuesta_FechaRegistro) OVER (
+                PARTITION BY Alumno_Legajo, Curso_Codigo, CAST(Encuesta_FechaRegistro AS DATE)
+            ) AS fecha_registro_canonica,
             ROW_NUMBER() OVER (
                 PARTITION BY Alumno_Legajo, Curso_Codigo, CAST(Encuesta_FechaRegistro AS DATE)
-                ORDER BY Encuesta_FechaRegistro -- Orden irrelevante, solo para sintaxis
+                ORDER BY Encuesta_FechaRegistro
             ) as rn
         FROM
-            Maestra_Filtrada -- Leemos del resultado del PASO 1
+            Maestra_Filtrada
     )
+
 INSERT INTO LOS_DESNORMALIZADOS.detalle_encuesta (
         encuesta_id,
         pregunta,
@@ -1237,7 +1241,7 @@ FROM
     RespuestasUnicas m
         JOIN LOS_DESNORMALIZADOS.encuesta e
              ON e.curso_id = m.Curso_Codigo
-                 AND CAST(e.fecha_registro AS DATE) = CAST(m.Encuesta_FechaRegistro AS DATE)
+                 AND e.fecha_registro = m.fecha_registro_canonica
     CROSS APPLY (
         VALUES
             (m.Encuesta_Pregunta1, m.Encuesta_Nota1),
@@ -1246,7 +1250,7 @@ FROM
             (m.Encuesta_Pregunta4, m.Encuesta_Nota4)
     ) AS Detalle(pregunta, respuesta)
 WHERE
-    m.rn = 1 -- La condición clave: solo migramos la primera aparición de cada encuesta
+    m.rn = 1
   AND Detalle.pregunta IS NOT NULL;
 END
 GO
