@@ -32,6 +32,14 @@ CREATE TABLE LOS_DESNORMALIZADOS.alumno (
                                             fecha_nacimiento DATETIME
 );
 
+
+CREATE TABLE LOS_DESNORMALIZADOS.institucion(
+                                                id BIGINT PRIMARY KEY IDENTITY(1,1),
+                                                nombre VARCHAR(255),
+                                                razon_social VARCHAR(255),
+                                                cuit VARCHAR(255)
+);
+
 CREATE TABLE LOS_DESNORMALIZADOS.sede(
                                          id BIGINT PRIMARY KEY IDENTITY(1,1),
                                          provincia VARCHAR(255),
@@ -39,15 +47,9 @@ CREATE TABLE LOS_DESNORMALIZADOS.sede(
                                          nombre VARCHAR(255),
                                          direccion VARCHAR(255),
                                          telefono VARCHAR(255),
-                                         mail VARCHAR(255)
-);
-
-
-CREATE TABLE LOS_DESNORMALIZADOS.institucion(
-                                                id BIGINT PRIMARY KEY IDENTITY(1,1),
-                                                nombre VARCHAR(255),
-                                                razon_social VARCHAR(255),
-                                                cuit VARCHAR(255)
+                                         mail VARCHAR(255),
+                                         institucion_id BIGINT
+                                         FOREIGN KEY(institucion_id) REFERENCES LOS_DESNORMALIZADOS.institucion(id)
 );
 
 CREATE TABLE LOS_DESNORMALIZADOS.categoria(
@@ -427,15 +429,20 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.migrar_sedes
     AS
 BEGIN
     SET NOCOUNT ON;
-INSERT INTO LOS_DESNORMALIZADOS.sede (provincia, localidad, nombre, direccion, telefono, mail)
+INSERT INTO LOS_DESNORMALIZADOS.sede (provincia, localidad, nombre, direccion, telefono, mail, institucion_id)
 SELECT DISTINCT
     TRIM(Sede_Provincia),
     TRIM(Sede_Localidad),
     TRIM(Sede_Nombre),
     TRIM(Sede_Direccion),
     TRIM(Sede_Telefono),
-    TRIM(Sede_Mail)
+    TRIM(Sede_Mail),
+    i.id
 FROM gd_esquema.Maestra m
+    JOIN
+        LOS_DESNORMALIZADOS.institucion i ON i.nombre = TRIM(m.Institucion_Nombre)
+            AND ISNULL(i.razon_social, '') = ISNULL(TRIM(m.Institucion_RazonSocial), '')
+            AND ISNULL(i.cuit, '') = ISNULL(TRIM(m.Institucion_Cuit), '')
 WHERE Sede_Nombre IS NOT NULL
   AND NOT EXISTS (
     SELECT 1 FROM LOS_DESNORMALIZADOS.sede s
