@@ -100,16 +100,16 @@ GO
 -----------------------------------------------------------------------------------------
 
 -- Hechos Inscripciones
-CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_inscripciones (
+CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_inscripciones ( -- cursada por alumno
                                                              tiempo_id INT,
                                                              sede_id BIGINT,
                                                              categoria_curso_id BIGINT,
                                                              turno_id SMALLINT,
                                                              alumno_id BIGINT,
                                                              estado_id SMALLINT,
-                                                             cantidad_inscripciones INT,
-                                                             es_rechazada INT,
-                                                             cursada_aprobada INT,
+                                                             cantidad_inscripciones INT, -- SIEMPRE SERÁ 1, PERO MEJORA LA COMPRENSIÓN DE LA CONSULTA AL HECHO
+                                                             es_rechazada BIT, -- DESNORMALIZACION (para mejorar el cálculo)
+                                                             cursada_aprobada INT, -- DESNORMALIZACION (para mejorar el cálculo)
 
                                                              PRIMARY KEY (tiempo_id, sede_id, categoria_curso_id, turno_id, alumno_id),
                                                              FOREIGN KEY (tiempo_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
@@ -121,7 +121,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_inscripciones (
 );
 
 -- Hechos Finales
-CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_finales (
+CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_finales ( -- final por alumno
                                                        tiempo_examen_id INT,
                                                        tiempo_inicio_curso_id INT,
                                                        alumno_id BIGINT,
@@ -144,7 +144,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_finales (
 );
 
 -- Hechos Detalle Factura
-CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_detalle_factura (
+CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_detalle_factura ( -- pago de alumno por factura
                                                                tiempo_emision_id INT,
                                                                tiempo_vencimiento_id INT,
                                                                tiempo_pago_id INT,
@@ -169,7 +169,6 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_detalle_factura (
 -- Hechos Encuestas
 CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_encuestas (
                                                          tiempo_id INT,
-                                                         alumno_id BIGINT,
                                                          categoria_curso_id BIGINT,
                                                          sede_id BIGINT,
                                                          profesor_id BIGINT,
@@ -178,7 +177,6 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_encuestas (
                                                          cantidad_encuestas INT,
 
                                                          FOREIGN KEY (tiempo_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
-                                                         FOREIGN KEY (alumno_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_alumno(legajo),
                                                          FOREIGN KEY (categoria_curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_categoria_curso(id),
                                                          FOREIGN KEY (sede_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_sede(id),
                                                          FOREIGN KEY (profesor_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_profesor(id),
@@ -395,7 +393,6 @@ BEGIN
 INSERT INTO LOS_DESNORMALIZADOS.BI_hechos_encuestas
 (
     tiempo_id,
-    alumno_id,
     categoria_curso_id,
     sede_id,
     profesor_id,
@@ -405,7 +402,6 @@ INSERT INTO LOS_DESNORMALIZADOS.BI_hechos_encuestas
 )
 SELECT
     t.id,
-    NULL,
     c.categoria_id,
     c.sede_id,
     c.profesor_id,
@@ -489,7 +485,7 @@ SELECT
 FROM LOS_DESNORMALIZADOS.BI_hechos_inscripciones h
          JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t ON h.tiempo_id = t.id
          JOIN LOS_DESNORMALIZADOS.BI_dim_sede s ON h.sede_id = s.id
-GROUP BY t.anio, t.mes, s.nombre;
+GROUP BY t.anio, t.mes, s.nombre; -- Agrupa por año, mes y sede (nombre de sede)
 GO
 
 -- 3. Comparación de desempeño de cursada por sede
@@ -622,6 +618,11 @@ GO
 
 
 
-select * from LOS_DESNORMALIZADOS.BI_vista_01_categorias_turnos_solicitados
+--select * from LOS_DESNORMALIZADOS.BI_vista_01_categorias_turnos_solicitados
 
-select * from LOS_DESNORMALIZADOS.BI_vista_09_ingresos_categoria
+--select * from LOS_DESNORMALIZADOS.BI_vista_02_tasa_rechazo ORDER BY anio, mes;
+
+--select * from LOS_DESNORMALIZADOS.BI_vista_09_ingresos_categoria
+
+SELECT TOP 3 * FROM LOS_DESNORMALIZADOS.BI_dim_alumno;
+SELECT TOP 3 * FROM LOS_DESNORMALIZADOS.alumno;
