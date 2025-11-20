@@ -331,9 +331,10 @@ END;
 GO
 
 -- Procedure: Migrar Hechos Finales
-CREATE PROCEDURE LOS_DESNORMALIZADOS.BI_migrar_hechos_finales
+CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.BI_migrar_hechos_finales
     AS
 BEGIN
+
 INSERT INTO LOS_DESNORMALIZADOS.BI_hechos_finales
 (tiempo_examen_id, tiempo_inicio_curso_id, alumno_id, categoria_curso_id, sede_id, profesor_id, rango_etario_alumno_id, nota_final, dias_para_finalizar, es_aprobado, es_ausente)
 SELECT
@@ -344,7 +345,7 @@ SELECT
     c.sede_id,
     c.profesor_id,
     LOS_DESNORMALIZADOS.BI_obtener_rango_etario(a.fecha_nacimiento, f.fecha),
-    ISNULL(fi.nota, 0),
+    fi.nota,
     DATEDIFF(DAY, c.fecha_inicio, f.fecha),
     CASE WHEN fi.nota >= 4 THEN 1 ELSE 0 END,
     CASE WHEN fi.presente = 0 THEN 1 ELSE 0 END
@@ -618,11 +619,13 @@ GO
 
 
 
---select * from LOS_DESNORMALIZADOS.BI_vista_01_categorias_turnos_solicitados
-
---select * from LOS_DESNORMALIZADOS.BI_vista_02_tasa_rechazo ORDER BY anio, mes;
-
---select * from LOS_DESNORMALIZADOS.BI_vista_09_ingresos_categoria
-
-SELECT TOP 3 * FROM LOS_DESNORMALIZADOS.BI_dim_alumno;
-SELECT TOP 3 * FROM LOS_DESNORMALIZADOS.alumno;
+select * from LOS_DESNORMALIZADOS.BI_vista_01_categorias_turnos_solicitados
+select * from LOS_DESNORMALIZADOS.BI_vista_02_tasa_rechazo order by anio, mes, sede asc
+select * from LOS_DESNORMALIZADOS.BI_vista_03_desempenio_cursada order by anio, sede
+select * from LOS_DESNORMALIZADOS.BI_vista_04_tiempo_promedio_finalizacion order by anio, categoria
+select * from LOS_DESNORMALIZADOS.BI_vista_05_nota_promedio_finales order by anio, semestre, categoria
+select * from LOS_DESNORMALIZADOS.BI_vista_06_ausentismo order by anio, semestre, sede
+select * from LOS_DESNORMALIZADOS.BI_vista_07_desvio_pagos order by anio, semestre
+select * from LOS_DESNORMALIZADOS.BI_vista_08_morosidad order by anio, mes
+select * from LOS_DESNORMALIZADOS.BI_vista_09_ingresos_categoria order by anio, sede
+select * from LOS_DESNORMALIZADOS.BI_vista_10_indice_satisfaccion order by anio, sede
