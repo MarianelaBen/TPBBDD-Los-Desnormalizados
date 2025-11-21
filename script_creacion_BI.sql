@@ -661,15 +661,3 @@ FROM LOS_DESNORMALIZADOS.BI_hechos_encuestas h
 GROUP BY t.anio, s.nombre, re.descripcion;
 GO
 
-
-
-select * from LOS_DESNORMALIZADOS.BI_vista_01_categorias_turnos_solicitados;
-select * from LOS_DESNORMALIZADOS.BI_vista_02_tasa_rechazo order by anio, mes, sede asc;
-select * from LOS_DESNORMALIZADOS.BI_vista_03_desempenio_cursada order by anio, sede;
-select * from LOS_DESNORMALIZADOS.BI_vista_04_tiempo_promedio_finalizacion order by anio, categoria;
-select * from LOS_DESNORMALIZADOS.BI_vista_05_nota_promedio_finales order by anio, semestre, categoria;
-select * from LOS_DESNORMALIZADOS.BI_vista_06_ausentismo order by anio, semestre, sede;
-select * from LOS_DESNORMALIZADOS.BI_vista_07_desvio_pagos order by anio, semestre;
-select * from LOS_DESNORMALIZADOS.BI_vista_08_morosidad order by anio, mes;
-select * from LOS_DESNORMALIZADOS.BI_vista_09_ingresos_categoria order by anio, sede;
-select * from LOS_DESNORMALIZADOS.BI_vista_10_indice_satisfaccion order by anio, sede;
