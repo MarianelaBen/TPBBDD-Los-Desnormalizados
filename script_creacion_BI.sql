@@ -53,13 +53,19 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_dim_sede (
                                                  mail VARCHAR(255),
                                                  institucion_nombre VARCHAR(255),
                                                  institucion_razon_social VARCHAR(255),
-                                                 institucion_cuit VARCHAR(255),
+                                                 institucion_cuit VARCHAR(255)
 );
 
 -- Dimensión Turno
 CREATE TABLE LOS_DESNORMALIZADOS.BI_dim_turno_curso (
                                                         id SMALLINT PRIMARY KEY,
                                                         nombre VARCHAR(255)
+);
+
+-- Dimensión Curso
+CREATE TABLE LOS_DESNORMALIZADOS.BI_dim_curso (
+                                                            codigo_curso BIGINT PRIMARY KEY,
+                                                            nombre VARCHAR(255)
 );
 
 -- Dimensión Categoría Curso
@@ -114,17 +120,19 @@ GO
 CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_inscripciones ( -- cursada por alumno
                                                              tiempo_id BIGINT,
                                                              sede_id BIGINT,
-                                                             categoria_curso_id BIGINT,
                                                              turno_id SMALLINT,
                                                              alumno_id BIGINT,
+                                                             curso_id BIGINT,
+                                                             categoria_curso_id BIGINT,
                                                              estado_id SMALLINT,
                                                              cantidad_inscripciones INT, -- SIEMPRE SERÁ 1, PERO MEJORA LA COMPRENSIÓN DE LA CONSULTA AL HECHO
                                                              es_rechazada BIT, -- DESNORMALIZACION (para mejorar el cálculo)
                                                              cursada_aprobada INT, -- DESNORMALIZACION (para mejorar el cálculo)
 
-                                                             PRIMARY KEY (tiempo_id, sede_id, categoria_curso_id, turno_id, alumno_id),
+                                                             PRIMARY KEY (tiempo_id, sede_id, turno_id, alumno_id, curso_id),
                                                              FOREIGN KEY (tiempo_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
                                                              FOREIGN KEY (sede_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_sede(id),
+                                                             FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_curso(codigo_curso),
                                                              FOREIGN KEY (categoria_curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_categoria_curso(id),
                                                              FOREIGN KEY (turno_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_turno_curso(id),
                                                              FOREIGN KEY (alumno_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_alumno(legajo),
@@ -136,6 +144,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_finales ( -- final por alumno
                                                        tiempo_examen_id BIGINT,
                                                        tiempo_inicio_curso_id BIGINT,
                                                        alumno_id BIGINT,
+                                                       curso_id BIGINT,
                                                        categoria_curso_id BIGINT,
                                                        sede_id BIGINT,
                                                        profesor_id BIGINT,
@@ -145,10 +154,11 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_finales ( -- final por alumno
                                                        es_aprobado BIT,
                                                        es_ausente BIT,
 
-                                                       PRIMARY KEY (tiempo_examen_id, tiempo_inicio_curso_id, alumno_id, categoria_curso_id, sede_id, profesor_id),
+                                                       PRIMARY KEY (tiempo_examen_id, tiempo_inicio_curso_id, alumno_id, curso_id, sede_id, profesor_id),
                                                        FOREIGN KEY (tiempo_examen_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
                                                        FOREIGN KEY (tiempo_inicio_curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
                                                        FOREIGN KEY (alumno_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_alumno(legajo),
+                                                       FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_curso(codigo_curso),
                                                        FOREIGN KEY (categoria_curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_categoria_curso(id),
                                                        FOREIGN KEY (sede_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_sede(id),
                                                        FOREIGN KEY (profesor_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_profesor(id),
@@ -162,6 +172,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_detalle_factura ( -- pago de alumno p
                                                                tiempo_pago_id BIGINT,
                                                                sede_id BIGINT,
                                                                alumno_id BIGINT,
+                                                               curso_id BIGINT,
                                                                categoria_curso_id BIGINT,
                                                                medio_pago_id BIGINT,
                                                                importe_facturado DECIMAL(18,2),
@@ -169,11 +180,13 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_detalle_factura ( -- pago de alumno p
                                                                importe_adeudado DECIMAL(18,2),
                                                                importe_pagado DECIMAL(18,2),
 
+                                                               PRIMARY KEY (tiempo_emision_id, tiempo_vencimiento_id, sede_id, alumno_id, curso_id),
                                                                FOREIGN KEY (tiempo_emision_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
                                                                FOREIGN KEY (tiempo_vencimiento_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
                                                                FOREIGN KEY (tiempo_pago_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
                                                                FOREIGN KEY (sede_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_sede(id),
                                                                FOREIGN KEY (alumno_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_alumno(legajo),
+                                                               FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_curso(codigo_curso),
                                                                FOREIGN KEY (categoria_curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_categoria_curso(id),
                                                                FOREIGN KEY (medio_pago_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_medio_pago(id)
 );
@@ -181,6 +194,7 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_detalle_factura ( -- pago de alumno p
 -- Hechos Encuestas
 CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_encuestas (
                                                          tiempo_id BIGINT,
+                                                         curso_id BIGINT,
                                                          categoria_curso_id BIGINT,
                                                          sede_id BIGINT,
                                                          profesor_id BIGINT,
@@ -188,8 +202,9 @@ CREATE TABLE LOS_DESNORMALIZADOS.BI_hechos_encuestas (
                                                          bloque_satisfaccion_id BIGINT,
                                                          cantidad_encuestas INT,
 
-                                                         PRIMARY KEY (tiempo_id, categoria_curso_id, sede_id, profesor_id, bloque_satisfaccion_id),
+                                                         PRIMARY KEY (tiempo_id, curso_id, sede_id, profesor_id, bloque_satisfaccion_id),
                                                          FOREIGN KEY (tiempo_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_tiempo(id),
+                                                         FOREIGN KEY (curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_curso(codigo_curso),
                                                          FOREIGN KEY (categoria_curso_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_categoria_curso(id),
                                                          FOREIGN KEY (sede_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_sede(id),
                                                          FOREIGN KEY (profesor_id) REFERENCES LOS_DESNORMALIZADOS.BI_dim_profesor(id),
@@ -306,19 +321,23 @@ BEGIN
     INSERT INTO LOS_DESNORMALIZADOS.BI_dim_turno_curso
     SELECT id, nombre FROM LOS_DESNORMALIZADOS.turno;
 
-    -- 7. Migrar Categorias
+    -- 7. Migrar Cursos
+    INSERT INTO LOS_DESNORMALIZADOS.BI_dim_curso
+    SELECT codigo_curso, nombre FROM LOS_DESNORMALIZADOS.curso;
+
+    -- 8. Migrar Categorias
     INSERT INTO LOS_DESNORMALIZADOS.BI_dim_categoria_curso
     SELECT id, nombre FROM LOS_DESNORMALIZADOS.categoria;
 
-    -- 8. Migrar Estados
+    -- 9. Migrar Estados
     INSERT INTO LOS_DESNORMALIZADOS.BI_dim_estado_inscripcion
     SELECT id, nombre FROM LOS_DESNORMALIZADOS.estado_inscripcion;
 
-    -- 9. Migrar Medios Pago
+    -- 10. Migrar Medios Pago
     INSERT INTO LOS_DESNORMALIZADOS.BI_dim_medio_pago
     SELECT id, nombre FROM LOS_DESNORMALIZADOS.medio_de_pago;
 
-    -- 10. Migrar Dimensión Tiempo
+    -- 11. Migrar Dimensión Tiempo
     DECLARE @fecha_min DATETIME, @fecha_max DATETIME;
     SELECT @fecha_min = MIN(f) FROM (
                                         SELECT fecha_emision as f FROM LOS_DESNORMALIZADOS.factura
@@ -351,10 +370,11 @@ CREATE PROCEDURE LOS_DESNORMALIZADOS.BI_migrar_hechos_inscripciones
 BEGIN
     SET NOCOUNT ON;
     INSERT INTO LOS_DESNORMALIZADOS.BI_hechos_inscripciones
-    (tiempo_id, sede_id, categoria_curso_id, turno_id, alumno_id, estado_id, cantidad_inscripciones, es_rechazada, cursada_aprobada)
+    (tiempo_id, sede_id, curso_id, categoria_curso_id, turno_id, alumno_id, estado_id, cantidad_inscripciones, es_rechazada, cursada_aprobada)
     SELECT
         t.id,
         c.sede_id,
+        c.codigo_curso,
         c.categoria_id,
         hc.turno_id,
         ic.alumno_id,
@@ -366,7 +386,17 @@ BEGIN
              JOIN LOS_DESNORMALIZADOS.curso c ON ic.curso_id = c.codigo_curso
              JOIN LOS_DESNORMALIZADOS.estado_inscripcion ei ON ic.estado_id = ei.id
              JOIN LOS_DESNORMALIZADOS.horario_curso hc ON hc.curso_id = c.codigo_curso
-             JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t ON t.anio = YEAR(ic.fecha_inscripcion) AND t.mes = MONTH(ic.fecha_inscripcion) AND t.dia = DAY(ic.fecha_inscripcion);
+             JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t ON t.anio = YEAR(ic.fecha_inscripcion) AND t.mes = MONTH(ic.fecha_inscripcion) AND t.dia = DAY(ic.fecha_inscripcion)
+    GROUP BY 
+        t.id,
+        c.sede_id,
+        c.codigo_curso,
+        c.categoria_id,
+        hc.turno_id,
+        ic.alumno_id,
+        ic.estado_id,
+        CASE WHEN ei.nombre = 'Rechazada' THEN 1 ELSE 0 END,
+        LOS_DESNORMALIZADOS.BI_alumno_aprobo (c.codigo_curso, ic.alumno_id);
     PRINT('HECHOS INSCRIPCIONES MIGRADOS');
 END;
 GO
@@ -377,11 +407,12 @@ CREATE OR ALTER PROCEDURE LOS_DESNORMALIZADOS.BI_migrar_hechos_finales
 BEGIN
     SET NOCOUNT ON;
     INSERT INTO LOS_DESNORMALIZADOS.BI_hechos_finales
-    (tiempo_examen_id, tiempo_inicio_curso_id, alumno_id, categoria_curso_id, sede_id, profesor_id, rango_etario_alumno_id, nota_final, dias_para_finalizar, es_aprobado, es_ausente)
+    (tiempo_examen_id, tiempo_inicio_curso_id, alumno_id, curso_id, categoria_curso_id, sede_id, profesor_id, rango_etario_alumno_id, nota_final, dias_para_finalizar, es_aprobado, es_ausente)
     SELECT
         t_examen.id,
         t_inicio.id,
         fi.alumno_id,
+        c.codigo_curso,
         c.categoria_id,
         c.sede_id,
         c.profesor_id,
@@ -395,7 +426,20 @@ BEGIN
              JOIN LOS_DESNORMALIZADOS.curso c ON f.curso_id = c.codigo_curso
              JOIN LOS_DESNORMALIZADOS.alumno a ON fi.alumno_id = a.legajo
              JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t_examen ON t_examen.anio = YEAR(f.fecha) AND t_examen.mes = MONTH(f.fecha) AND t_examen.dia = DAY(f.fecha)
-        JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t_inicio ON t_inicio.anio = YEAR(c.fecha_inicio) AND t_inicio.mes = MONTH(c.fecha_inicio) AND t_inicio.dia = DAY(c.fecha_inicio);
+        JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t_inicio ON t_inicio.anio = YEAR(c.fecha_inicio) AND t_inicio.mes = MONTH(c.fecha_inicio) AND t_inicio.dia = DAY(c.fecha_inicio)
+    GROUP BY
+        t_examen.id,
+        t_inicio.id,
+        fi.alumno_id,
+        c.codigo_curso,
+        c.categoria_id,
+        c.sede_id,
+        c.profesor_id,
+        LOS_DESNORMALIZADOS.BI_obtener_rango_etario(a.fecha_nacimiento, f.fecha, 'A'),
+        fi.nota,
+        DATEDIFF(DAY, c.fecha_inicio, f.fecha),
+        CASE WHEN fi.nota >= 4 THEN 1 ELSE 0 END,
+        CASE WHEN fi.presente = 0 THEN 1 ELSE 0 END;
     PRINT('HECHOS FINALES MIGRADOS');
 END;
 GO
@@ -406,13 +450,14 @@ CREATE PROCEDURE LOS_DESNORMALIZADOS.BI_migrar_hechos_detalle_factura
 BEGIN
     SET NOCOUNT ON;
     INSERT INTO LOS_DESNORMALIZADOS.BI_hechos_detalle_factura
-    (tiempo_emision_id, tiempo_vencimiento_id, tiempo_pago_id, sede_id, alumno_id, categoria_curso_id, medio_pago_id, importe_facturado, es_pago_fuera_termino, importe_adeudado, importe_pagado)
+    (tiempo_emision_id, tiempo_vencimiento_id, tiempo_pago_id, sede_id, alumno_id, curso_id, categoria_curso_id, medio_pago_id, importe_facturado, es_pago_fuera_termino, importe_adeudado, importe_pagado)
     SELECT
         t_emi.id,
         t_venc.id,
         t_pago.id,
         c.sede_id,
         f.alumno_id,
+        c.codigo_curso,
         c.categoria_id,
         p.medio_pago_id,
         df.importe,
@@ -425,7 +470,20 @@ BEGIN
              LEFT JOIN LOS_DESNORMALIZADOS.pago p ON f.nro_factura = p.factura_id
              JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t_emi ON t_emi.anio = YEAR(f.fecha_emision) AND t_emi.mes = MONTH(f.fecha_emision) AND t_emi.dia = DAY(f.fecha_emision)
         JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t_venc ON t_venc.anio = YEAR(f.fecha_vencimiento) AND t_venc.mes = MONTH(f.fecha_vencimiento) AND t_venc.dia = DAY(f.fecha_vencimiento)
-        LEFT JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t_pago ON t_pago.anio = YEAR(p.fecha) AND t_pago.mes = MONTH(p.fecha) AND t_pago.dia = DAY(p.fecha);
+        LEFT JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t_pago ON t_pago.anio = YEAR(p.fecha) AND t_pago.mes = MONTH(p.fecha) AND t_pago.dia = DAY(p.fecha)
+    GROUP BY
+        t_emi.id,
+        t_venc.id,
+        t_pago.id,
+        c.sede_id,
+        f.alumno_id,
+        c.codigo_curso,
+        c.categoria_id,
+        p.medio_pago_id,
+        df.importe,
+        CASE WHEN p.fecha > f.fecha_vencimiento THEN 1 ELSE 0 END,
+        CASE WHEN p.id IS NULL THEN df.importe ELSE 0 END,
+        ISNULL(p.importe, 0);
     PRINT('HECHOS DETALLE FACTURA MIGRADOS');
 END;
 GO
@@ -438,6 +496,7 @@ BEGIN
     INSERT INTO LOS_DESNORMALIZADOS.BI_hechos_encuestas
     (
         tiempo_id,
+        curso_id,
         categoria_curso_id,
         sede_id,
         profesor_id,
@@ -447,6 +506,7 @@ BEGIN
     )
     SELECT
         t.id,
+        c.codigo_curso,
         c.categoria_id,
         c.sede_id,
         c.profesor_id,
@@ -461,6 +521,7 @@ BEGIN
              JOIN LOS_DESNORMALIZADOS.BI_dim_tiempo t ON t.anio = YEAR(e.fecha_registro) AND t.mes = MONTH(e.fecha_registro) AND t.dia = DAY(e.fecha_registro)
     GROUP BY
         t.id,
+        c.codigo_curso,
         c.categoria_id,
         c.sede_id,
         c.profesor_id,
